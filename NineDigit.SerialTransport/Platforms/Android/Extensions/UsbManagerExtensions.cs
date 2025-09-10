@@ -1,39 +1,38 @@
-﻿#if MONOANDROID
-using Android.App;
+﻿#if ANDROID
 using Android.Content;
 using Android.Hardware.Usb;
-using Hoho.Android.UsbSerial.Driver;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using Hoho.Android.UsbSerial.Drivers;
+using System.Collections.Immutable;
+using System.Security;
+using Hoho.Android.UsbSerial;
 
 namespace NineDigit.SerialTransport
 {
     public static class UsbManagerExtensions
     {
-        const string ACTION_USB_PERMISSION = "com.Hoho.Android.UsbSerial.Util.USB_PERMISSION";
+        const string ActionUsbPermission = "com.Hoho.Android.UsbSerial.USB_PERMISSION";
 
-        public static async Task<IUsbSerialPort> GetUsbSerialPortAndRequestPermissionByDeviceNameAsync(this UsbManager usbManager, string deviceName, CancellationToken cancellationToken)
+        public static async Task<UsbSerialPort> GetUsbSerialPortAndRequestPermissionAsync(
+            this UsbManager usbManager,
+            UsbSerialPortSelectorDelegate serialPortSelector,
+            ProbeTable probeTable,
+            CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(usbManager);
+            ArgumentNullException.ThrowIfNull(serialPortSelector);
+            ArgumentNullException.ThrowIfNull(probeTable);
+            
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (usbManager is null)
-                throw new ArgumentNullException(nameof(usbManager));
-
-            if (string.IsNullOrWhiteSpace(deviceName))
-                throw new ArgumentException("Invalid USB device name.", nameof(deviceName));
-
-            var ports = usbManager.GetAllUsbSerialPorts();
+            var usbSerialProber = new UsbSerialProber(probeTable);
+            var ports = usbSerialProber.FindAllDrivers(usbManager).SelectMany(i => i.Ports).ToImmutableList();
 
             if (ports.Count == 0)
                 throw new InvalidOperationException("No connected USB device was found.");
 
-            var port = ports.FirstOrDefault(p => p.Driver.Device.DeviceName == deviceName);
+            var port = serialPortSelector(ports);
             if (port is null)
-                throw new ArgumentException($"No connected device with port name '{deviceName}' was found.", nameof(deviceName));
+                throw new InvalidOperationException("No matching device was found.");
 
             var device = port.Driver.Device;
             var context = Application.Context;
@@ -42,12 +41,13 @@ namespace NineDigit.SerialTransport
                 .ConfigureAwait(false);
 
             if (!permissionGranted)
-                throw new InvalidOperationException($"This application does not have permission to use usb device '{deviceName}'.");
+                throw new SecurityException("This application does not have permission to use usb device.");
 
             return port;
         }
 
-        public static async Task<bool> RequestPermissionAsync(this UsbManager manager, UsbDevice device, Context context, CancellationToken cancellationToken)
+        public static async Task<bool> RequestPermissionAsync(
+            this UsbManager manager, UsbDevice device, Context context, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -58,13 +58,13 @@ namespace NineDigit.SerialTransport
                 throw new ArgumentNullException(nameof(context));
 
             using var usbPermissionReceiver = new UsbPermissionReceiver(cancellationToken);
-            using var intentFilter = new IntentFilter(ACTION_USB_PERMISSION);
+            using var intentFilter = new IntentFilter(ActionUsbPermission);
 
             context.RegisterReceiver(usbPermissionReceiver, intentFilter);
 
             try
             {
-                using var intent = new Intent(ACTION_USB_PERMISSION);
+                using var intent = new Intent(ActionUsbPermission);
                 var pendingIntent = PendingIntent.GetBroadcast(context, 0, intent, 0);
                 manager.RequestPermission(device, pendingIntent);
 
@@ -78,50 +78,24 @@ namespace NineDigit.SerialTransport
             }
         }
 
-        public static IReadOnlyCollection<IUsbSerialPort> GetAllUsbSerialPorts(this UsbManager usbManager)
-        {
-            if (usbManager is null)
-                throw new ArgumentNullException(nameof(usbManager));
-
-            var drivers = GetAllUsbSerialDrivers(usbManager);
-            var ports = drivers.SelectMany(d => d.Ports).ToList();
-
-            return new ReadOnlyCollection<IUsbSerialPort>(ports);
-        }
-
-        public static IList<IUsbSerialDriver> GetAllUsbSerialDrivers(this UsbManager usbManager)
-        {
-            if (usbManager is null)
-                throw new ArgumentNullException(nameof(usbManager));
-            
-            // Adding a custom driver to the default probe table
-            var table = UsbSerialProber.DefaultProbeTable;
-
-            table.AddProduct(UsbId.VENDOR_JMSYSTEMS, UsbId.JMSYSTEMS_CHDULITE, Java.Lang.Class.FromType(typeof(CdcAcmSerialDriver))); // JM Systems, s.r.o. - ChduLite
-            table.AddProduct(0x1b4f, 0x0008, Java.Lang.Class.FromType(typeof(CdcAcmSerialDriver))); // IOIO OTG
-
-            using var prober = new UsbSerialProber(table);
-            return prober.FindAllDrivers(usbManager);
-        }
-
         private class UsbPermissionReceiver : BroadcastReceiver
         {
             private readonly CancellationTokenRegistration _cancellationTokenRegistration;
             private readonly TaskCompletionSource<bool> _completionSource;
 
-            private bool _disposed = false;
+            private bool _disposed;
 
             public UsbPermissionReceiver(CancellationToken cancellationToken)
             {
-                this._cancellationTokenRegistration = cancellationToken.Register(this.OnCanceled);
-                this._completionSource = new TaskCompletionSource<bool>();
+                _cancellationTokenRegistration = cancellationToken.Register(OnCanceled);
+                _completionSource = new TaskCompletionSource<bool>();
             }
 
             public Task<bool> Task
-                => this._completionSource.Task;
+                => _completionSource.Task;
 
             private void OnCanceled()
-                => this._completionSource.TrySetCanceled();
+                => _completionSource.TrySetCanceled();
 
             public override void OnReceive(Context? context, Intent? intent)
             {
@@ -138,13 +112,13 @@ namespace NineDigit.SerialTransport
 
             protected override void Dispose(bool disposing)
             {
-                if (this._disposed)
+                if (_disposed)
                     return;
 
                 if (disposing)
-                    this._cancellationTokenRegistration.Dispose();
+                    _cancellationTokenRegistration.Dispose();
 
-                this._disposed = true;
+                _disposed = true;
 
                 base.Dispose(disposing);
             }

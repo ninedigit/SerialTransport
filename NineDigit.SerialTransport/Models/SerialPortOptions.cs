@@ -1,9 +1,7 @@
-﻿using System;
-
-namespace NineDigit.SerialTransport
+﻿namespace NineDigit.SerialTransport
 {
     // ReSharper disable once ClassNeverInstantiated.Global
-    public sealed class SerialPortOptions
+    public class SerialPortOptions
     {
         public int BaudRate { get; set; } = 115200;
         public Parity Parity { get; set; } = Parity.None;

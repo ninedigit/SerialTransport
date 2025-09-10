@@ -1,58 +1,121 @@
-﻿using Microsoft.Extensions.Logging;
+﻿#if ANDROID
+using System.Collections.Immutable;
+using Android.Content;
+using Android.Hardware.Usb;
+using Hoho.Android.UsbSerial;
+using Hoho.Android.UsbSerial.Drivers;
+#endif
+using Microsoft.Extensions.Logging;
 
-namespace NineDigit.SerialTransport
+namespace NineDigit.SerialTransport;
+
+/// <summary>
+/// Helper for instantiating transport instance.
+/// </summary>
+public static class TransportFactory
 {
-    /// <summary>
-    /// Helper for instantiating transport instance.
-    /// </summary>
-    public static class TransportFactory
+    public static async Task<ITransport> CreateSerialTransportAsync(SerialPortDeviceSelectorDelegate serialPortSelector,
+        SerialPortOptions options, ILoggerFactory loggerFactory, CancellationToken cancellationToken = default)
     {
-        /// <summary>
-        /// Instantiates new transport instance.
-        /// </summary>
-        /// <param name="portName">Port name (or device name for mono)</param>
-        /// <param name="options">Serial port options</param>
-        /// <param name="loggerFactory">Logger factory</param>
-        /// <returns></returns>
-        public static ITransport CreateSerialTransport(string portName, SerialPortOptions options, ILoggerFactory loggerFactory)
+        if (serialPortSelector is null)
+            throw new ArgumentNullException(nameof(serialPortSelector));
+        
+        if (options is null)
+            throw new ArgumentNullException(nameof(options));
+        
+        if (loggerFactory is null)
+            throw new ArgumentNullException(nameof(loggerFactory));
+            
+        ISerialPort serialPort;
+#if ANDROID
+        var androidOptions = new AndroidSerialPortOptions(options);
+        serialPort = CreateSerialPort(usbSerialPort =>
         {
-            if (loggerFactory is null)
-                throw new System.ArgumentNullException(nameof(loggerFactory));
+            var devices = usbSerialPort.Select(port => new AndroidSerialPortDevice(port)).ToImmutableList();
+            var selectedDevice = devices.FirstOrDefault(i => ReferenceEquals(i, serialPortSelector(devices)));
 
-            var serialPort = CreateSerialPort(portName, options, loggerFactory);
-            var serialTransportConnectionLogger = loggerFactory.CreateLogger<TransportConnection>();
-            var serialTransportConnection = new TransportConnection(serialPort, serialTransportConnectionLogger);
+            if (selectedDevice is null)
+                throw new InvalidOperationException("Invalid serial port selection");
 
-            return serialTransportConnection;
-        }
-
-        /// <summary>
-        /// Instantiates new serial port instance.
-        /// </summary>
-        /// <param name="portName">Port name (or device name for mono)</param>
-        /// <param name="options">Serial port options</param>
-        /// <param name="loggerFactory">Logger factory</param>
-        /// <returns></returns>
-        internal static ISerialPort CreateSerialPort(string portName, SerialPortOptions options, ILoggerFactory loggerFactory)
-        {
-            if (loggerFactory is null)
-                throw new System.ArgumentNullException(nameof(loggerFactory));
-
-            ISerialPort serialPort;
-            ILogger logger = loggerFactory.CreateLogger(typeof(TransportFactory));
-
-#if MONOANDROID
-            var transportOptions = new AndroidSerialPortOptions(options);
-            serialPort = new AndroidSerialPort(portName, transportOptions, loggerFactory);
-            logger.LogDebug("Instantiated Android Serial Port implementation.");
-#elif NET
+            return selectedDevice.GetUsbSerialPort();
+        }, androidOptions, loggerFactory);
+#elif DESKTOP
             var serialPortOptions = new DotNetSerialPortOptions(options);
-            serialPort = new DotNetSerialPort(portName, serialPortOptions, loggerFactory);
-            logger.LogDebug("Instantiated .NET Standard Serial Port implementation");
+            var serialPortLogger = loggerFactory.CreateLogger<DotNetSerialPort>();
+            var logger = loggerFactory.CreateLogger(typeof(TransportFactory));
+            var serialPortManager = new SerialPort.SerialPortManager();
+            
+            IReadOnlyCollection<NineDigit.SerialPort.ISerialPortDevice> devices;
+
+            try
+            {
+                devices = await serialPortManager.GetSerialPortDevicesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is NotSupportedException or PlatformNotSupportedException)
+            {
+                logger.LogWarning("Unable to get serial port devices on given platform");
+                devices = [];
+            }
+
+            var serialPortDevices = devices.Select(device => new DotNetSerialPortDevice(device)).ToList();
+
+            var selectedSerialPortDevice = serialPortSelector(serialPortDevices);
+            if (selectedSerialPortDevice is null)
+                throw new InvalidOperationException("No serial port selected");
+            
+            serialPort = new DotNetSerialPort(selectedSerialPortDevice.PortName, serialPortOptions, serialPortLogger);
 #else
             throw new PlatformNotSupportedException();
 #endif
-            return serialPort;
-        }
+        var transportLogger = loggerFactory.CreateLogger<TransportConnection>();
+        var transport = new TransportConnection(serialPort, transportLogger);
+        
+        return transport;
     }
+        
+#if ANDROID
+    public static AndroidSerialPort CreateSerialPort(
+        UsbSerialPortSelectorDelegate serialPortSelector,
+        AndroidSerialPortOptions options,
+        ILoggerFactory loggerFactory)
+    {
+        var usbManager = GetUsbManager();
+        var probeTable = ProbeTable.Default;
+        var serialPort = CreateSerialPort(usbManager, probeTable, serialPortSelector, options, loggerFactory);
+
+        return serialPort;
+    }
+
+    public static AndroidSerialPort CreateSerialPort(
+        UsbManager usbManager,
+        ProbeTable probeTable,
+        UsbSerialPortSelectorDelegate serialPortSelector,
+        AndroidSerialPortOptions options,
+        ILoggerFactory loggerFactory)
+    {
+        ArgumentNullException.ThrowIfNull(usbManager);
+        ArgumentNullException.ThrowIfNull(serialPortSelector);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+            
+        var usbSerialProber = new UsbSerialProber(probeTable);
+        var ports = usbSerialProber.FindAllDrivers(usbManager).SelectMany(i => i.Ports).ToImmutableList();
+
+        if (ports.Count == 0)
+            throw new InvalidOperationException("No connected USB device was found.");
+
+        var port = serialPortSelector(ports);
+        if (port is null)
+            throw new InvalidOperationException("No matching device was found.");
+            
+        var serialPortLogger = loggerFactory.CreateLogger<AndroidSerialPort>();
+        var serialPort = new AndroidSerialPort(usbManager, port, options, serialPortLogger);
+            
+        return serialPort;
+    }
+        
+    private static UsbManager GetUsbManager()
+        => (UsbManager)Application.Context.GetSystemService(Context.UsbService)!;
+#endif
 }

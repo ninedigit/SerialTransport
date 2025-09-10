@@ -1,34 +1,41 @@
 ﻿<Project>
-	<Import Project="$(SolutionDir)CodeSignTool.props" />
-	
-    <!-- Signing assemblies -->
-    <Target Name="SigningTarget" AfterTargets="Build" DependsOnTargets="ReadCertKeyFile" Condition="$(Configuration.StartsWith('Release')) And ($([MSBuild]::IsOSPlatform('Linux')) Or $([MSBuild]::IsOSPlatform('OSX')))">
-        <Message Text="[1/3] Assembly signing ..." Importance="high" />
-		<Exec Command="CodeSignTool sign -input_file_path=$(MSBuildProjectDirectory)/$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />
+<!--	<Import Project="$(SolutionDir)CodeSignTool.props" />-->
+<!--	-->
+<!--    &lt;!&ndash; Signing assemblies &ndash;&gt;-->
+<!--    <Target Name="SigningTarget" AfterTargets="Build" DependsOnTargets="ReadCertKeyFile" Condition="$(Configuration.StartsWith('Release')) And ($([MSBuild]::IsOSPlatform('Linux')) Or $([MSBuild]::IsOSPlatform('OSX')))">-->
+<!--        <Message Text="[1/3] Assembly signing ..." Importance="high" />-->
+<!--		<Exec Command="CodeSignTool sign -input_file_path=$(MSBuildProjectDirectory)/$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />-->
+<!--    </Target>-->
+
+<!--	<Target Name="SigningTargetWindows" AfterTargets="CoreBuild" Condition="$(Configuration.StartsWith('Release')) And $([MSBuild]::IsOSPlatform('Windows'))">-->
+<!--		<Message Text="[1/3] Assembly signing ..." Importance="high" />-->
+<!--		<Exec Command="CodeSignTool sign -input_file_path=$(ProjectDir)$(OutputPath)$(AssemblyName).dll -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />-->
+<!--	</Target>-->
+
+<!--    &lt;!&ndash; Signing NuGet package &ndash;&gt;-->
+<!--    <Target Name="SignPackage" AfterTargets="Pack" DependsOnTargets="ReadCertKeyFile" Condition="$(Configuration.StartsWith('Release')) And $([MSBuild]::IsOSPlatform('Windows')) == 'false'">-->
+<!--        <Message Text="[2/3] NuGet package signing ..." Importance="high" />-->
+<!--		<Exec Command="CodeSignTool sign -input_file_path=$(MSBuildProjectDirectory)/$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />-->
+<!--	</Target>-->
+
+<!--    <Target Name="SignPackageWindows" AfterTargets="Pack" Condition="$(Configuration.StartsWith('Release')) And $([MSBuild]::IsOSPlatform('Windows'))">-->
+<!--        <Message Text="[2/3] NuGet package signing ..." Importance="high" />-->
+<!--		<Exec Command="CodeSignTool sign -input_file_path=$(MSBuildProjectDirectory)/$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />-->
+<!--	</Target>-->
+
+<!--    &lt;!&ndash; Copy NuGet packages &ndash;&gt;-->
+<!--    <Target Name="CopyNuGetToDist" AfterTargets="SignPackage;SignPackageWindows" Condition="$(Configuration.StartsWith('Release'))">-->
+<!--        <Message Text="[3/3] NuGet package copying ..." Importance="high" />-->
+<!--        <Message Text="Copied $(AssemblyName).$(PackageVersion).nupkg to $(SolutionDir)Dist" Importance="high" />-->
+<!--		<Copy SourceFiles="$(ProjectDir)$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg" DestinationFolder="$(SolutionDir)Dist" />-->
+<!--        <Copy SourceFiles="$(ProjectDir)$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).snupkg" DestinationFolder="$(SolutionDir)Dist" />-->
+<!--	</Target>-->
+
+    <Target Name="CopyNuGetToDist" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release'">
+        <Message Text="NuGet package copying ..." Importance="high" />
+        <Message Text="Copied $(PackageId).$(PackageVersion).nupkg to $(SolutionDir)Dist" Importance="high" />
+        <Copy SourceFiles="$(ProjectDir)$(BaseOutputPath)$(Configuration)\$(PackageId).$(PackageVersion).nupkg" DestinationFolder="$(SolutionDir)Dist" />
+        <Copy SourceFiles="$(ProjectDir)$(BaseOutputPath)$(Configuration)\$(PackageId).$(PackageVersion).snupkg" DestinationFolder="$(SolutionDir)Dist" />
     </Target>
-
-	<Target Name="SigningTargetWindows" AfterTargets="CoreBuild" Condition="$(Configuration.StartsWith('Release')) And $([MSBuild]::IsOSPlatform('Windows'))">
-		<Message Text="[1/3] Assembly signing ..." Importance="high" />
-		<Exec Command="CodeSignTool sign -input_file_path=$(ProjectDir)$(OutputPath)$(AssemblyName).dll -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />
-	</Target>
-
-    <!-- Signing NuGet package -->
-    <Target Name="SignPackage" AfterTargets="Pack" DependsOnTargets="ReadCertKeyFile" Condition="$(Configuration.StartsWith('Release')) And $([MSBuild]::IsOSPlatform('Windows')) == 'false'">
-        <Message Text="[2/3] NuGet package signing ..." Importance="high" />
-		<Exec Command="CodeSignTool sign -input_file_path=$(MSBuildProjectDirectory)/$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />
-	</Target>
-
-    <Target Name="SignPackageWindows" AfterTargets="Pack" Condition="$(Configuration.StartsWith('Release')) And $([MSBuild]::IsOSPlatform('Windows'))">
-        <Message Text="[2/3] NuGet package signing ..." Importance="high" />
-		<Exec Command="CodeSignTool sign -input_file_path=$(MSBuildProjectDirectory)/$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg -credential_id=$(CodeSignToolCredentialId) -username $(CodeSignToolUserName) -password &quot;$(CodeSignToolPassword)&quot; -override -totp_secret=&quot;$(CodeSignToolTotpSecret)&quot;" />
-	</Target>
-
-    <!-- Copy NuGet packages -->
-    <Target Name="CopyNuGetToDist" AfterTargets="SignPackage;SignPackageWindows" Condition="$(Configuration.StartsWith('Release'))">
-        <Message Text="[3/3] NuGet package copying ..." Importance="high" />
-        <Message Text="Copied $(AssemblyName).$(PackageVersion).nupkg to $(SolutionDir)Dist" Importance="high" />
-		<Copy SourceFiles="$(ProjectDir)$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).nupkg" DestinationFolder="$(SolutionDir)Dist" />
-        <Copy SourceFiles="$(ProjectDir)$(BaseOutputPath)$(Configuration)\$(AssemblyName).$(PackageVersion).snupkg" DestinationFolder="$(SolutionDir)Dist" />
-	</Target>
     
 </Project>

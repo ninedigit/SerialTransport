@@ -1,7 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NineDigit.SerialTransport
 {
@@ -15,20 +12,20 @@ namespace NineDigit.SerialTransport
 
         public TransportConnection(ISerialPort serialPort, ILogger<TransportConnection> logger)
         {
-            this._serialPort = serialPort
+            _serialPort = serialPort
                 ?? throw new ArgumentNullException(nameof(serialPort));
 
-            this._logger = logger
+            _logger = logger
                 ?? throw new ArgumentNullException(nameof(logger));
 
-            this._serialPort.OnError += SerialPort_OnError;
+            _serialPort.OnError += SerialPort_OnError;
         }
 
-        private void SerialPort_OnError(object sender, EventArgs e)
+        private void SerialPort_OnError(object? sender, EventArgs e)
         {
-            this._logger.LogError("Received Serial Port error event");
-            this._serialPort.Close();
-            this.SetDisconnected();
+            _logger.LogError("Received Serial Port error event");
+            _serialPort.Close();
+            SetDisconnected();
         }
 
         public Task WriteAsync(byte[] data, CancellationToken cancellationToken)
@@ -48,12 +45,12 @@ namespace NineDigit.SerialTransport
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await this._serialPort.OpenAsync(cancellationToken).ConfigureAwait(false);
-                this.SetConnected();
+                await _serialPort.OpenAsync(cancellationToken).ConfigureAwait(false);
+                SetConnected();
             }
             catch (Exception ex)
             {
-                this.SetDisconnected(ex);
+                SetDisconnected(ex);
                 throw;
             }
 
@@ -62,27 +59,27 @@ namespace NineDigit.SerialTransport
                 try
                 { 
                     cancellationToken.ThrowIfCancellationRequested();
-                    this._serialPort.Write(data);
+                    _serialPort.Write(data);
                 }
                 catch (TransportException ex)
                 {
-                    this.SetDisconnected(ex);
+                    SetDisconnected(ex);
                     throw;
                 }
                 catch (OperationCanceledException ex)
                 {
-                    this.SetDisconnected(ex);
-                    throw new WriteTransportException(this._serialPort.Name, $"Write operation to port '{this._serialPort.Name}' was cancelled.", ex);
+                    SetDisconnected(ex);
+                    throw new WriteTransportException(_serialPort.Name, $"Write operation to port '{_serialPort.Name}' was cancelled.", ex);
                 }
                 catch (TimeoutException ex)
                 {
-                    this.SetDisconnected(ex);
-                    throw new WriteTimeoutException(this._serialPort.WriteTimeout, this._serialPort.Name, ex);
+                    SetDisconnected(ex);
+                    throw new WriteTimeoutException(_serialPort.WriteTimeout, _serialPort.Name, ex);
                 }
                 catch (Exception ex)
                 {
-                    this.SetDisconnected(ex);
-                    throw new WriteTransportException($"An error has occured while writing to serial port '{this._serialPort.Name}'.", ex);
+                    SetDisconnected(ex);
+                    throw new WriteTransportException($"An error has occured while writing to serial port '{_serialPort.Name}'.", ex);
                 }
             }
 
@@ -91,27 +88,27 @@ namespace NineDigit.SerialTransport
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    return this._serialPort.Read((int)responseLength.Value);
+                    return _serialPort.Read((int)responseLength.Value);
                 }
                 catch (TransportException ex)
                 {
-                    this.SetDisconnected(ex);
+                    SetDisconnected(ex);
                     throw;
                 }
                 catch (OperationCanceledException ex)
                 {
-                    this.SetDisconnected(ex);
-                    throw new ReadTransportException(this._serialPort.Name, $"Write operation from port '{this._serialPort.Name}' was cancelled.", ex);
+                    SetDisconnected(ex);
+                    throw new ReadTransportException(_serialPort.Name, $"Write operation from port '{_serialPort.Name}' was cancelled.", ex);
                 }
                 catch (TimeoutException ex)
                 {
-                    this.SetDisconnected(ex);
-                    throw new ReadTimeoutException(this._serialPort.ReadTimeout, this._serialPort.Name, ex);
+                    SetDisconnected(ex);
+                    throw new ReadTimeoutException(_serialPort.ReadTimeout, _serialPort.Name, ex);
                 }
                 catch (Exception ex)
                 {
-                    this.SetDisconnected(ex);
-                    throw new ReadTransportException($"An error has occured while reading from serial port '{this._serialPort.Name}'.", ex);
+                    SetDisconnected(ex);
+                    throw new ReadTransportException($"An error has occured while reading from serial port '{_serialPort.Name}'.", ex);
                 }
             }
 
@@ -119,13 +116,13 @@ namespace NineDigit.SerialTransport
         }
 
         public void DiscardBuffers()
-            => this._serialPort.DiscardBuffers();
+            => _serialPort.DiscardBuffers();
 
         public void Disconnect(Exception ex)
         {
-            this._logger.LogDebug(ex, "Disconnecting with error");
-            this._serialPort.Close();
-            this.SetDisconnected(ex);
+            _logger.LogDebug(ex, "Disconnecting with error");
+            _serialPort.Close();
+            SetDisconnected(ex);
         }
         
         #region IDisposable
@@ -140,8 +137,8 @@ namespace NineDigit.SerialTransport
             
             if (disposing)
             {
-                this._serialPort.OnError -= SerialPort_OnError;
-                this._serialPort?.Dispose();
+                _serialPort.OnError -= SerialPort_OnError;
+                _serialPort?.Dispose();
             }
 
             _disposed = true;

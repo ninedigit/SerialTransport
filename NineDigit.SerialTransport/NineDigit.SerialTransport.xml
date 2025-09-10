@@ -136,21 +136,6 @@
             https://github.com/mik3y/usb-serial-for-android/blob/master/usbSerialForAndroid/src/main/java/com/hoho/android/usbserial/driver/UsbSerialPort.java
             </summary>
         </member>
-        <member name="T:NineDigit.SerialTransport.UsbId">
-            <summary>
-            List of additional USB device vendors/products
-            </summary>
-        </member>
-        <member name="F:NineDigit.SerialTransport.UsbId.VENDOR_JMSYSTEMS">
-            <summary>
-            JM Systems, s.r.o.
-            </summary>
-        </member>
-        <member name="F:NineDigit.SerialTransport.UsbId.JMSYSTEMS_CHDULITE">
-            <summary>
-            CHDU Lite >=v1.0
-            </summary>
-        </member>
         <member name="T:NineDigit.SerialTransport.TransportConnection">
             <summary>
             Platform-independent implementation of serial transport
@@ -204,23 +189,236 @@
             Helper for instantiating transport instance.
             </summary>
         </member>
-        <member name="M:NineDigit.SerialTransport.TransportFactory.CreateSerialTransport(System.String,NineDigit.SerialTransport.SerialPortOptions,Microsoft.Extensions.Logging.ILoggerFactory)">
+        <member name="T:NineDigit.SerialTransport.Resource">
             <summary>
-            Instantiates new transport instance.
+            Android Resource Designer class.
+            Exposes the Android Resource designer assembly into the project Namespace.
             </summary>
-            <param name="portName">Port name (or device name for mono)</param>
-            <param name="options">Serial port options</param>
-            <param name="loggerFactory">Logger factory</param>
-            <returns></returns>
         </member>
-        <member name="M:NineDigit.SerialTransport.TransportFactory.CreateSerialPort(System.String,NineDigit.SerialTransport.SerialPortOptions,Microsoft.Extensions.Logging.ILoggerFactory)">
+        <member name="F:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.ReadBuffer">
+            Internal read buffer.  Guarded by {@link #mReadBufferLock}. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.WriteBuffer">
+            Internal write buffer.  Guarded by {@link #mWriteBufferLock}. 
+        </member>
+        <member name="P:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.Device">
+             Returns the currently-bound USB device.
+            
+             @return the device
+        </member>
+        <member name="P:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.Serial">
+            Returns the device serial number
+             @return serial number
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.SetReadBufferSize(System.Int32)">
+             Sets the size of the internal buffer used to exchange data with the USB
+             stack for read operations.  Most users should not need to change this.
+            
+             @param bufferSize the size in bytes
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.SetWriteBufferSize(System.Int32)">
+             Sets the size of the internal buffer used to exchange data with the USB
+             stack for write operations.  Most users should not need to change this.
+            
+             @param bufferSize the size in bytes
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.DataBits5">
+            5 data bits. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.DataBits6">
+            6 data bits. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.DataBits7">
+            7 data bits. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.DataBits8">
+            8 data bits. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.FlowControlNone">
+            No flow control. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.FlowControlRtsCtsIn">
+            RTS/CTS input flow control. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.FlowControlRtsCtsOut">
+            RTS/CTS output flow control. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.FlowControlXOnXOffIn">
+            XON/XOFF input flow control. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.FlowControlXOnXFffOut">
+            XON/XOFF output flow control. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.ParityNone">
+            No parity. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.ParityOdd">
+            Odd parity. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.ParityEven">
+            Even parity. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.ParityMark">
+            Mark parity. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.ParitySpace">
+            Space parity. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.StopBitsOne">
+            1 stop bit. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.StopBitsOneAndHalf">
+            1.5 stop bits. 
+        </member>
+        <member name="F:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.StopBitsTwo">
+            2 stop bits. 
+        </member>
+        <member name="P:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.PortNumber">
+            Port number within driver.
+        </member>
+        <member name="P:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.Serial">
+            The serial number of the underlying UsbDeviceConnection, or {@code null}.
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.Open(Android.Hardware.Usb.UsbDeviceConnection)">
+             Opens and initializes the port. Upon success, caller must ensure that
+             {@link #close()} is eventually called.
+            
+             @param connection an open device connection, acquired with
+                        {@link UsbManager#openDevice(android.hardware.usb.UsbDevice)}
+             @throws IOException on error opening or initializing the port.
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.Close">
+             Closes the port.
+            
+             @throws IOException on error closing the port.
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.Read(System.Byte[],System.Int32)">
+             Reads as many bytes as possible into the destination buffer.
+            
+             @param dest the destination byte buffer
+             @param timeoutMillis the timeout for reading
+             @return the actual number of bytes read
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.Write(System.Byte[],System.Int32)">
+             Writes as many bytes as possible from the source buffer.
+            
+             @param src the source byte buffer
+             @param timeoutMillis the timeout for writing
+             @return the actual number of bytes written
+             @throws IOException if an error occurred during writing
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.SetParameters(System.Int32,System.Int32,Hoho.Android.UsbSerial.StopBits,Hoho.Android.UsbSerial.Parity)">
+             Sets various serial port parameters.
+            
+             @param baudRate baud rate as an integer, for example {@code 115200}.
+             @param dataBits one of {@link #DATABITS_5}, {@link #DATABITS_6},
+                        {@link #DATABITS_7}, or {@link #DATABITS_8}.
+             @param stopBits one of {@link #STOPBITS_1}, {@link #STOPBITS_1_5}, or
+                        {@link #STOPBITS_2}.
+             @param parity one of {@link #PARITY_NONE}, {@link #PARITY_ODD},
+                        {@link #PARITY_EVEN}, {@link #PARITY_MARK}, or
+                        {@link #PARITY_SPACE}.
+             @throws IOException on error setting the port parameters
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.GetCd">
+             Gets the CD (Carrier Detect) bit from the underlying UART.
+            
+             @return the current state, or {@code false} if not supported.
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.GetCts">
+             Gets the CTS (Clear To Send) bit from the underlying UART.
+            
+             @return the current state, or {@code false} if not supported.
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.GetDsr">
+             Gets the DSR (Data Set Ready) bit from the underlying UART.
+            
+             @return the current state, or {@code false} if not supported.
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.GetDtr">
+             Gets the DTR (Data Terminal Ready) bit from the underlying UART.
+            
+             @return the current state, or {@code false} if not supported.
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.SetDtr(System.Boolean)">
+             Sets the DTR (Data Terminal Ready) bit on the underlying UART, if
+             supported.
+            
+             @param value the value to set
+             @throws IOException if an error occurred during writing
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.GetRi">
+             Gets the RI (Ring Indicator) bit from the underlying UART.
+            
+             @return the current state, or {@code false} if not supported.
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.GetRts">
+             Gets the RTS (Request To Send) bit from the underlying UART.
+            
+             @return the current state, or {@code false} if not supported.
+             @throws IOException if an error occurred during reading
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.SetRts(System.Boolean)">
+             Sets the RTS (Request To Send) bit on the underlying UART, if
+             supported.
+            
+             @param value the value to set
+             @throws IOException if an error occurred during writing
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.Drivers.UsbSerialPort.PurgeHwBuffers(System.Boolean,System.Boolean)">
+            Flush non-transmitted output data and / or non-read input data
+            @param flushRX {@code true} to flush non-transmitted output data
+            @param flushTX {@code true} to flush non-read input data
+            @return {@code true} if the operation was successful, or
+            {@code false} if the operation is not supported by the driver or device
+            @throws IOException if an error occurred during flush
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.ProbeTable.AddProduct(System.Int32,System.Int32,System.Type)">
+             Adds or updates a (vendor, product) pair in the table.
+            
+             @param vendorId the USB vendor id
+             @param productId the USB product id
+             @param driverClass the driver class responsible for this pair
+             @return {@code this}, for chaining
+        </member>
+        <member name="T:Hoho.Android.UsbSerial.UsbId">
+             Registry of USB vendor/product ID constants.
+            
+             Culled from various sources; see
+             <a href="http://www.linux-usb.org/usb.ids">usb.ids</a> for one listing.
+            
+             @author mike wakerly (opensource@hoho.com)
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.UsbSerialProber.FindAllDrivers(Android.Hardware.Usb.UsbManager)">
+             Finds and builds all possible {@link UsbSerialDriver UsbSerialDrivers}
+             from the currently-attached {@link UsbDevice} hierarchy. This method does
+             not require permission from the Android USB system, since it does not
+             open any of the devices.
+            
+             @param usbManager
+             @return a list, possibly empty, of all compatible drivers
+        </member>
+        <member name="M:Hoho.Android.UsbSerial.UsbSerialProber.ProbeDevice(Android.Hardware.Usb.UsbDevice)">
             <summary>
-            Instantiates new serial port instance.
+            Probes a single device for a compatible driver.
             </summary>
-            <param name="portName">Port name (or device name for mono)</param>
-            <param name="options">Serial port options</param>
-            <param name="loggerFactory">Logger factory</param>
-            <returns></returns>
+            <param name="usbDevice">The usb device to probe</param>
+            <returns>Returns a new <see cref="T:Hoho.Android.UsbSerial.Drivers.UsbSerialDriverBase" /> compatible with this device, or <c>null</c>
+            if none available</returns>
+            <exception cref="T:Java.Lang.RuntimeException"></exception>
+        </member>
+        <member name="T:Hoho.Android.UsbSerial.UsbSupport">
+            <summary>
+            Fixes Xamarin bug with missing constants
+            https://forums.xamarin.com/discussion/comment/197948/#Comment_197948
+            Filed as https://bugzilla.xamarin.com/show_bug.cgi?id=47663
+            </summary>
         </member>
     </members>
 </doc>

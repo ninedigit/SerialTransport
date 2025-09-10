@@ -1,27 +1,23 @@
-﻿#if NET
+﻿#if DESKTOP
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using System;
-using System.IO;
 using System.IO.Ports;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NineDigit.SerialTransport
 {
-    internal sealed class DotNetSerialPort : ISerialPort
+    internal class DotNetSerialPort : ISerialPort
     {
         public event EventHandler<EventArgs>? OnError;
 
-        readonly SerialPort serialPort;
-        readonly ILogger logger;
+        private readonly System.IO.Ports.SerialPort _serialPort;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// </summary>
         /// <param name="portName">Názov sériového portu, napríklad COM1 alebo /dev/ttyS0.</param>
         /// <param name="options">Communication options.</param>
         public DotNetSerialPort(string portName, DotNetSerialPortOptions options)
-            : this(portName, options, NullLoggerFactory.Instance)
+            : this(portName, options, NullLogger<DotNetSerialPort>.Instance)
         {
         }
 
@@ -29,8 +25,8 @@ namespace NineDigit.SerialTransport
         /// </summary>
         /// <param name="portName">Názov sériového portu, napríklad COM1 alebo /dev/ttyS0.</param>
         /// <param name="options">Communication options.</param>
-        /// <param name="loggerFactory">Logger factory.</param>
-        public DotNetSerialPort(string portName, DotNetSerialPortOptions options, ILoggerFactory loggerFactory)
+        /// <param name="logger">Logger.</param>
+        public DotNetSerialPort(string portName, DotNetSerialPortOptions options, ILogger<DotNetSerialPort> logger)
         {
             if (string.IsNullOrWhiteSpace(portName))
                 throw new ArgumentException("Invalid serial port name.", nameof(portName));
@@ -47,40 +43,39 @@ namespace NineDigit.SerialTransport
             if (options.WriteTimeout.TotalMilliseconds <= 0)
                 throw new ArgumentOutOfRangeException(nameof(options), "Write timeout must be an positive non-zero number.");
 
-            this.serialPort = new SerialPort(portName, options.BaudRate, options.Parity, options.DataBits, options.StopBits)
+            _serialPort = new System.IO.Ports.SerialPort(portName, options.BaudRate, options.Parity, options.DataBits, options.StopBits)
             {
                 WriteTimeout = (int)options.WriteTimeout.TotalMilliseconds,
                 ReadTimeout = (int)options.ReadTimeout.TotalMilliseconds
             };
-            this.serialPort.ErrorReceived += OnSerialPortErrorReceived;
-
-            this.logger = loggerFactory.CreateLogger<DotNetSerialPort>();
+            _serialPort.ErrorReceived += OnSerialPortErrorReceived;
+            
+            _logger = logger;
         }
 
-        public string Name
-            => this.serialPort.PortName;
+        public string Name => _serialPort.PortName;
 
         public int ReadTimeout
         {
-            get => this.serialPort.ReadTimeout;
-            set => this.serialPort.ReadTimeout = value;
+            get => _serialPort.ReadTimeout;
+            set => _serialPort.ReadTimeout = value;
         }
 
         public int WriteTimeout
         {
-            get => this.serialPort.WriteTimeout;
-            set => this.serialPort.WriteTimeout = value;
+            get => _serialPort.WriteTimeout;
+            set => _serialPort.WriteTimeout = value;
         }
 
         private void OnSerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
-            this.OnError?.Invoke(this, e);
+            OnError?.Invoke(this, e);
         }
 
         public Task OpenAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            this.EnsurePortIsOpen();
+            EnsurePortIsOpen();
             return Task.CompletedTask;
         }
 
@@ -88,19 +83,19 @@ namespace NineDigit.SerialTransport
         {
             try
             {
-                if (this.serialPort.IsOpen)
+                if (_serialPort.IsOpen)
                     return;
                 
-                this.serialPort.Open();
-                this.DiscardBuffers();
+                _serialPort.Open();
+                DiscardBuffers();
             }
             catch (UnauthorizedAccessException ex)
             {
-                throw new BusyPortException(this.serialPort.PortName, $"Port '{this.serialPort.PortName}' is busy.", ex);
+                throw new BusyPortException(_serialPort.PortName, $"Port '{_serialPort.PortName}' is busy.", ex);
             }
             catch (Exception ex) // System.IO.FileNotFoundException
             {
-                throw new TransportException(this.serialPort.PortName, $"Unable to connect to the device connected at {this.serialPort.PortName}.", ex);
+                throw new TransportException(_serialPort.PortName, $"Unable to connect to the device connected at {_serialPort.PortName}.", ex);
             }
         }
 
@@ -108,8 +103,8 @@ namespace NineDigit.SerialTransport
         {
             try
             {
-                this.EnsurePortIsOpen();
-                var stream = this.serialPort.BaseStream;
+                EnsurePortIsOpen();
+                var stream = _serialPort.BaseStream;
 
                 stream.Write(data, 0, data.Length);
                 stream.Flush();
@@ -124,13 +119,13 @@ namespace NineDigit.SerialTransport
             }
             catch (Exception ex)
             {
-                throw new WriteTransportException(this.serialPort.PortName, "Failed to write data to the port.", ex);
+                throw new WriteTransportException(_serialPort.PortName, "Failed to write data to the port.", ex);
             }
         }
 
         public byte[] Read(int responseLength)
         {
-            var stream = this.serialPort.BaseStream;
+            var stream = _serialPort.BaseStream;
             var result = new byte[responseLength];
             var bytesToRead = responseLength;
             var totalBytesRead = 0;
@@ -153,38 +148,38 @@ namespace NineDigit.SerialTransport
 
         public void DiscardBuffers()
         {
-            if (!this.serialPort.IsOpen)
+            if (!_serialPort.IsOpen)
                 return;
             
-            this.serialPort.DiscardInBuffer();
-            this.serialPort.DiscardOutBuffer();
+            _serialPort.DiscardInBuffer();
+            _serialPort.DiscardOutBuffer();
         }
 
         public void Close()
         {
-            if (this.serialPort.IsOpen)
-                this.serialPort.Close();
+            if (_serialPort.IsOpen)
+                _serialPort.Close();
         }
 
         #region IDisposable
-        private bool disposed;
+        private bool _disposed;
 
         private void Dispose(bool disposing)
         {
-            if (disposed)
+            if (_disposed)
                 return;
             
             if (disposing)
             {
                 try
                 {
-                    this.serialPort.ErrorReceived -= OnSerialPortErrorReceived;
-                    this.serialPort.Dispose();
+                    _serialPort.ErrorReceived -= OnSerialPortErrorReceived;
+                    _serialPort.Dispose();
                 }
                 // "Port does not exists" occurs if device has been plugged out physically.
                 catch (IOException) { }
             }
-            disposed = true;
+            _disposed = true;
         }
 
         public void Dispose()
