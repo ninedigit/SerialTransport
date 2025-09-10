@@ -27,34 +27,41 @@ public class ProbeTable
      * @param driverClass the driver class responsible for this pair
      * @return {@code this}, for chaining
      */
-    public ProbeTable AddProduct(int vendorId, int productId, Type driverClass)
+    public ProbeTable AddProduct(int vendorId, int productId, Type driverType)
+    {
+        ValidateDriverType(driverType);
+        
+        var key = new Tuple<int, int>(vendorId, productId);
+        _probeTable.TryAdd(key, driverType);
+        
+        return this;
+    }
+    
+    public ProbeTable AddProduct<TDriver>(int vendorId, int productId) where TDriver : IUsbSerialDriver
     {
         var key = new Tuple<int, int>(vendorId, productId);
-        _probeTable.TryAdd(key, driverClass);
+        _probeTable.TryAdd(key, typeof(TDriver));
         return this;
     }
 
-    public ProbeTable AddDriver<TDriver>(ImmutableDeviceList deviceList)
-        where TDriver : IUsbSerialDriver
+    public ProbeTable AddDriver<TDriver>(ImmutableDeviceList deviceList) where TDriver : IUsbSerialDriver
         => AddDriver(typeof(TDriver), deviceList);
     
-    public ProbeTable AddDriver(Type driverClass, ImmutableDeviceList deviceList)
+    public ProbeTable AddDriver(Type driverType, ImmutableDeviceList deviceList)
     {
-        ArgumentNullException.ThrowIfNull(driverClass);
-        
-        if (!driverClass.IsAssignableTo(typeof(IUsbSerialDriver)))
-            throw new ArgumentException($"Expecting driver of type {typeof(IUsbSerialDriver).FullName}");
+        ArgumentNullException.ThrowIfNull(driverType);
+        ValidateDriverType(driverType);
         
         foreach (var entry in deviceList)
         {
             try
             {
-                AddProduct(entry.VendorId, entry.ProductId, driverClass);
-                Log.Debug(Tag, $"Added {entry.VendorId:X}, {entry.ProductId:X}, {driverClass}");
+                AddProduct(entry.VendorId, entry.ProductId, driverType);
+                Log.Debug(Tag, $"Added {entry.VendorId:X}, {entry.ProductId:X}, {driverType}");
             }
             catch (Exception)
             {
-                Log.Debug(Tag, $"Error adding {entry.VendorId:X}, {entry.ProductId:X}, {driverClass}");
+                Log.Debug(Tag, $"Error adding {entry.VendorId:X}, {entry.ProductId:X}, {driverType}");
                 throw;
             }
         }
@@ -82,6 +89,12 @@ public class ProbeTable
         probeTable.AddDriver<STM32SerialDriver>(STM32SerialDriver.GetSupportedDevices());
         
         return probeTable;
+    }
+
+    private static void ValidateDriverType(Type driverType)
+    {
+        if (!driverType.IsAssignableTo(typeof(IUsbSerialDriver)))
+            throw new ArgumentException($"Expecting driver of type {typeof(IUsbSerialDriver).FullName}");
     }
 }
 #endif
