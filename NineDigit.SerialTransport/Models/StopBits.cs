@@ -1,6 +1,6 @@
 ﻿namespace NineDigit.SerialTransport
 {
-    public enum StopBit
+    public enum StopBits
     {
         One = 1,
         Two = 2,

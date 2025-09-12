@@ -5,7 +5,7 @@ using System.IO.Ports;
 
 namespace NineDigit.SerialTransport
 {
-    internal class DotNetSerialPort : ISerialPort
+    internal class SerialPort : ISerialPort
     {
         public event EventHandler<EventArgs>? OnError;
 
@@ -16,8 +16,8 @@ namespace NineDigit.SerialTransport
         /// </summary>
         /// <param name="portName">Názov sériového portu, napríklad COM1 alebo /dev/ttyS0.</param>
         /// <param name="options">Communication options.</param>
-        public DotNetSerialPort(string portName, DotNetSerialPortOptions options)
-            : this(portName, options, NullLogger<DotNetSerialPort>.Instance)
+        public SerialPort(string portName, SerialPortOptions options)
+            : this(portName, options, NullLogger<SerialPort>.Instance)
         {
         }
 
@@ -26,7 +26,7 @@ namespace NineDigit.SerialTransport
         /// <param name="portName">Názov sériového portu, napríklad COM1 alebo /dev/ttyS0.</param>
         /// <param name="options">Communication options.</param>
         /// <param name="logger">Logger.</param>
-        public DotNetSerialPort(string portName, DotNetSerialPortOptions options, ILogger<DotNetSerialPort> logger)
+        public SerialPort(string portName, SerialPortOptions options, ILogger<SerialPort> logger)
         {
             if (string.IsNullOrWhiteSpace(portName))
                 throw new ArgumentException("Invalid serial port name.", nameof(portName));
@@ -38,16 +38,26 @@ namespace NineDigit.SerialTransport
                 throw new ArgumentException("Baud rate must be an positive number.", nameof(options));
 
             if (options.ReadTimeout.TotalMilliseconds <= 0)
-                throw new ArgumentOutOfRangeException(nameof(options), "Read timeout must be an positive non-zero number.");
+                throw new ArgumentOutOfRangeException(nameof(options), $"{nameof(options.ReadTimeout)} must be an positive non-zero number.");
+            
+            if (options.ReadTimeout.TotalMilliseconds > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(options), $"{nameof(options.ReadTimeout)} must be less than {int.MaxValue}.");
 
             if (options.WriteTimeout.TotalMilliseconds <= 0)
-                throw new ArgumentOutOfRangeException(nameof(options), "Write timeout must be an positive non-zero number.");
+                throw new ArgumentOutOfRangeException(nameof(options), $"{nameof(options.WriteTimeout)} must be an positive non-zero number.");
+            
+            if (options.WriteTimeout.TotalMilliseconds > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(options), $"{nameof(options.WriteTimeout)} must be less than {int.MaxValue}.");
 
-            _serialPort = new System.IO.Ports.SerialPort(portName, options.BaudRate, options.Parity, options.DataBits, options.StopBits)
+            var parity = GetParity(options.Parity);
+            var stopBits = GetStopBits(options.StopBits);
+            
+            _serialPort = new System.IO.Ports.SerialPort(portName, options.BaudRate, parity, options.DataBits, stopBits)
             {
                 WriteTimeout = (int)options.WriteTimeout.TotalMilliseconds,
                 ReadTimeout = (int)options.ReadTimeout.TotalMilliseconds
             };
+            
             _serialPort.ErrorReceived += OnSerialPortErrorReceived;
             
             _logger = logger;
@@ -188,6 +198,30 @@ namespace NineDigit.SerialTransport
             GC.SuppressFinalize(this);
         }
         #endregion
+        
+        private System.IO.Ports.Parity GetParity(Parity parity)
+        {
+            return parity switch
+            {
+                Parity.None => System.IO.Ports.Parity.None,
+                Parity.Odd => System.IO.Ports.Parity.Odd,
+                Parity.Even => System.IO.Ports.Parity.Even,
+                Parity.Mark => System.IO.Ports.Parity.Mark,
+                Parity.Space => System.IO.Ports.Parity.Space,
+                _ => throw new NotSupportedException($"Parity {parity} is not supported.")
+            };
+        }
+
+        private System.IO.Ports.StopBits GetStopBits(StopBits stopBits)
+        {
+            return stopBits switch
+            {
+                StopBits.One => System.IO.Ports.StopBits.One,
+                StopBits.OnePointFive => System.IO.Ports.StopBits.OnePointFive,
+                StopBits.Two => System.IO.Ports.StopBits.Two,
+                _ => throw new NotSupportedException($"StopBit {stopBits} is not supported.")
+            };
+        }
     }
 }
 #endif

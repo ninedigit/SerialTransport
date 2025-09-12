@@ -1,10 +1,10 @@
 namespace NineDigit.SerialTransport;
 
-internal class DotNetSerialPortDevice : ISerialPortDevice
+internal class SerialPortDevice : ISerialPortDevice
 {
     private readonly NineDigit.SerialPort.ISerialPortDevice _device;
     
-    public DotNetSerialPortDevice(NineDigit.SerialPort.ISerialPortDevice device)
+    public SerialPortDevice(NineDigit.SerialPort.ISerialPortDevice device)
     {
         _device = device ?? throw new ArgumentNullException(nameof(device));
     }

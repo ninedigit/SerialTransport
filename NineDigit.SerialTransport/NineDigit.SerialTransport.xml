@@ -131,7 +131,7 @@
             parameter contains the total number of bytes read into the buffer.
             </returns>
         </member>
-        <member name="T:NineDigit.SerialTransport.AndroidSerialPort">
+        <member name="T:NineDigit.SerialTransport.SerialPort">
             <summary>
             https://github.com/mik3y/usb-serial-for-android/blob/master/usbSerialForAndroid/src/main/java/com/hoho/android/usbserial/driver/UsbSerialPort.java
             </summary>
@@ -163,7 +163,7 @@
         </member>
         <member name="P:NineDigit.SerialTransport.TransportConnectionBase.LastError">
             <summary>
-            Last error that caused disconnecting of trasnport connection.
+            Last error that caused disconnecting of transport connection.
             Value is non-null only when <see cref="P:NineDigit.SerialTransport.TransportConnectionBase.State"/> is equal to <see cref="F:NineDigit.SerialTransport.TransportConnectionState.Disconnected"/>.
             </summary>
             <value><see cref="T:System.Exception"/> or <c>null</c>.</value>

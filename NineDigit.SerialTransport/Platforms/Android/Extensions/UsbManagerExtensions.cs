@@ -12,39 +12,39 @@ namespace NineDigit.SerialTransport
     {
         const string ActionUsbPermission = "com.Hoho.Android.UsbSerial.USB_PERMISSION";
 
-        public static async Task<UsbSerialPort> GetUsbSerialPortAndRequestPermissionAsync(
-            this UsbManager usbManager,
-            UsbSerialPortSelectorDelegate serialPortSelector,
-            ProbeTable probeTable,
-            CancellationToken cancellationToken = default)
-        {
-            ArgumentNullException.ThrowIfNull(usbManager);
-            ArgumentNullException.ThrowIfNull(serialPortSelector);
-            ArgumentNullException.ThrowIfNull(probeTable);
-            
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var usbSerialProber = new UsbSerialProber(probeTable);
-            var ports = usbSerialProber.FindAllDrivers(usbManager).SelectMany(i => i.Ports).ToImmutableList();
-
-            if (ports.Count == 0)
-                throw new InvalidOperationException("No connected USB device was found.");
-
-            var port = serialPortSelector(ports);
-            if (port is null)
-                throw new InvalidOperationException("No matching device was found.");
-
-            var device = port.Driver.Device;
-            var context = Application.Context;
-            
-            var permissionGranted = await usbManager.RequestPermissionAsync(device, context, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!permissionGranted)
-                throw new SecurityException("This application does not have permission to use usb device.");
-
-            return port;
-        }
+        // public static async Task<UsbSerialPort> GetUsbSerialPortAndRequestPermissionAsync(
+        //     this UsbManager usbManager,
+        //     UsbSerialPortSelectorDelegate serialPortSelector,
+        //     ProbeTable probeTable,
+        //     CancellationToken cancellationToken = default)
+        // {
+        //     ArgumentNullException.ThrowIfNull(usbManager);
+        //     ArgumentNullException.ThrowIfNull(serialPortSelector);
+        //     ArgumentNullException.ThrowIfNull(probeTable);
+        //     
+        //     cancellationToken.ThrowIfCancellationRequested();
+        //
+        //     var usbSerialProber = new UsbSerialProber(probeTable);
+        //     var ports = usbSerialProber.FindAllDrivers(usbManager).SelectMany(i => i.Ports).ToImmutableList();
+        //
+        //     if (ports.Count == 0)
+        //         throw new InvalidOperationException("No connected USB device was found.");
+        //
+        //     var port = serialPortSelector(ports);
+        //     if (port is null)
+        //         throw new InvalidOperationException("No matching device was found.");
+        //
+        //     var device = port.Driver.Device;
+        //     var context = Application.Context;
+        //     
+        //     var permissionGranted = await usbManager.RequestPermissionAsync(device, context, cancellationToken)
+        //         .ConfigureAwait(false);
+        //
+        //     if (!permissionGranted)
+        //         throw new SecurityException("This application does not have permission to use usb device.");
+        //
+        //     return port;
+        // }
 
         public static async Task<bool> RequestPermissionAsync(
             this UsbManager manager, UsbDevice device, Context context, CancellationToken cancellationToken = default)
