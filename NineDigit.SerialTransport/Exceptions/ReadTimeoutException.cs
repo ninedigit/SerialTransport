@@ -1,8 +1,11 @@
-using System.Runtime.Serialization;
-
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable ConvertToPrimaryConstructor
+// ReSharper disable IntroduceOptionalParameters.Global
 namespace NineDigit.SerialTransport;
 
-[Serializable]
 public class ReadTimeoutException : TransportException
 {
     public ReadTimeoutException()
@@ -44,31 +47,9 @@ public class ReadTimeoutException : TransportException
     {
         Timeout = timeout;
     }
-
-    protected ReadTimeoutException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-        foreach (var entry in info)
-        {
-            switch (entry.Name)
-            {
-                case "Timeout":
-                    Timeout = (int)entry.Value;
-                    break;
-            }
-        }
-    }
         
     public int? Timeout { get; }
 
-    public override void GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        base.GetObjectData(info, context);
-            
-        if (Timeout.HasValue)
-            info.AddValue("Timeout", Timeout.Value);
-    }
-        
     public static string GetDefaultMessage(int? timeout, string? portName)
     {
         if (timeout.HasValue && string.IsNullOrWhiteSpace(portName))

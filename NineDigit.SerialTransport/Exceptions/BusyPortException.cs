@@ -1,8 +1,7 @@
-using System.Runtime.Serialization;
-
+// ReSharper disable IntroduceOptionalParameters.Global
+// ReSharper disable CheckNamespace
 namespace NineDigit.SerialTransport;
 
-[Serializable]
 public class BusyPortException : PortException
 {
     public BusyPortException()
@@ -27,11 +26,6 @@ public class BusyPortException : PortException
 
     public BusyPortException(string? portName, string? message, Exception? innerException)
         : base(portName, message, innerException)
-    {
-    }
-        
-    protected BusyPortException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
     {
     }
 }

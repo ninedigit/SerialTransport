@@ -1,32 +1,20 @@
 ﻿#if DESKTOP
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using System.IO.Ports;
+// ReSharper disable CheckNamespace
 
 namespace NineDigit.SerialTransport
 {
     internal class SerialPort : ISerialPort
     {
-        public event EventHandler<EventArgs>? OnError;
+        public event EventHandler<SerialPortErrorEventArgs>? OnError;
 
         private readonly System.IO.Ports.SerialPort _serialPort;
-        private readonly ILogger _logger;
 
         /// <summary>
         /// </summary>
         /// <param name="portName">Názov sériového portu, napríklad COM1 alebo /dev/ttyS0.</param>
         /// <param name="options">Communication options.</param>
         public SerialPort(string portName, SerialPortOptions options)
-            : this(portName, options, NullLogger<SerialPort>.Instance)
-        {
-        }
-
-        /// <summary>
-        /// </summary>
-        /// <param name="portName">Názov sériového portu, napríklad COM1 alebo /dev/ttyS0.</param>
-        /// <param name="options">Communication options.</param>
-        /// <param name="logger">Logger.</param>
-        public SerialPort(string portName, SerialPortOptions options, ILogger<SerialPort> logger)
         {
             if (string.IsNullOrWhiteSpace(portName))
                 throw new ArgumentException("Invalid serial port name.", nameof(portName));
@@ -59,8 +47,6 @@ namespace NineDigit.SerialTransport
             };
             
             _serialPort.ErrorReceived += OnSerialPortErrorReceived;
-            
-            _logger = logger;
         }
 
         public string Name => _serialPort.PortName;
@@ -79,7 +65,11 @@ namespace NineDigit.SerialTransport
 
         private void OnSerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
-            OnError?.Invoke(this, e);
+            var code = ((int)e.EventType).ToString();
+            var errorType = typeof(System.IO.Ports.SerialError).FullName;
+            var args = new SerialPortErrorEventArgs(code, errorType, message: null, exception: null);
+            
+            OnError?.Invoke(this, args);
         }
 
         public Task OpenAsync(CancellationToken cancellationToken)

@@ -1,12 +1,13 @@
 ﻿#if ANDROID
 using Android.Content;
 using Android.Hardware.Usb;
+// ReSharper disable CheckNamespace
 
 namespace NineDigit.SerialTransport
 {
     public static class UsbManagerExtensions
     {
-        const string ActionUsbPermission = "com.Hoho.Android.UsbSerial.USB_PERMISSION";
+        private const string ActionUsbPermission = "com.Hoho.Android.UsbSerial.USB_PERMISSION";
 
         public static async Task<bool> RequestPermissionAsync(
             this UsbManager manager, UsbDevice device, Context context, CancellationToken cancellationToken = default)

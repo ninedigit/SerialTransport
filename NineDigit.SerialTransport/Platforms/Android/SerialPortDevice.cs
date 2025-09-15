@@ -1,13 +1,15 @@
 #if ANDROID
 using Hoho.Android.UsbSerial.Drivers;
+// ReSharper disable CheckNamespace
+// ReSharper disable ConvertToPrimaryConstructor
 
 namespace NineDigit.SerialTransport;
 
-internal class AndroidSerialPortDevice : ISerialPortDevice
+internal class SerialPortDevice : ISerialPortDevice
 {
     private readonly UsbSerialPort _usbSerialPort;
     
-    public AndroidSerialPortDevice(UsbSerialPort port)
+    public SerialPortDevice(UsbSerialPort port)
     {
         _usbSerialPort = port ?? throw new ArgumentNullException(nameof(port));
     }

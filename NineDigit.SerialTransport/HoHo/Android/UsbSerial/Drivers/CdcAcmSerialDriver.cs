@@ -1,11 +1,4 @@
 #if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using Android.Hardware.Usb;
 using Android.OS;
 using Android.Util;
@@ -14,6 +7,10 @@ using Java.Lang;
 using Java.Nio;
 using IOException = Java.IO.IOException;
 using Math = System.Math;
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Global
+// ReSharper disable UnusedMember.Local
+// ReSharper disable UnusedMethodReturnValue.Local
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
@@ -133,15 +130,15 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
             // in the linux kernel
 
             _controlInterface = Device.GetInterface(0);
-            Log.Debug(Tag, "Control iface=" + _controlInterface);
+            Log.Debug(Tag, "Control interface: " + _controlInterface);
 
             _dataInterface = Device.GetInterface(0);
-            Log.Debug(Tag, "data iface=" + _dataInterface);
+            Log.Debug(Tag, "Data interface: " + _dataInterface);
 
-            if (!Connection.ClaimInterface(_controlInterface, true))
-            {
+            var connection = EnsureConnection();
+            
+            if (!connection.ClaimInterface(_controlInterface, true))
                 throw new IOException("Could not claim shared control/data interface.");
-            }
 
             var endCount = _controlInterface.EndpointCount;
             if (endCount < 3)
@@ -197,10 +194,10 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
             Log.Debug(Tag, "Control iface=" + _controlInterface);
             // class should be USB_CLASS_COMM
 
-            if (!Connection.ClaimInterface(_controlInterface, true))
-            {
+            var connection = EnsureConnection();
+            
+            if (!connection.ClaimInterface(_controlInterface, true))
                 throw new IOException("Could not claim control interface.");
-            }
 
             _controlEndpoint = _controlInterface.GetEndpoint(0);
             Log.Debug(Tag, "Control endpoint direction: " + _controlEndpoint.Direction);
@@ -210,7 +207,7 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
             Log.Debug(Tag, "data iface=" + _dataInterface);
             // class should be USB_CLASS_CDC_DATA
 
-            if (!Connection.ClaimInterface(_dataInterface, true))
+            if (!connection.ClaimInterface(_dataInterface, true))
             {
                 throw new IOException("Could not claim data interface.");
             }
@@ -221,7 +218,7 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
         }
 
         private int SendAcmControlMessage(int request, int value, byte[]? buf)
-            => Connection.ControlTransfer((UsbAddressing)0x21, request, value, 0, buf, buf?.Length ?? 0, 5000);
+            => EnsureConnection().ControlTransfer((UsbAddressing)0x21, request, value, 0, buf, buf?.Length ?? 0, 5000);
 
         public override void Close()
         {
@@ -234,13 +231,15 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
 
         public override int Read(byte[] dest, int timeoutMillis)
         {
+            var connection = EnsureConnection();
+            
             if (_enableAsyncReads)
             {
                 var request = new UsbRequest();
-                    
+                
                 try
                 {
-                    request.Initialize(Connection, _readEndpoint);
+                    request.Initialize(connection, _readEndpoint);
 
                     // CJM: Xamarin bug: ByteBuffer.Wrap is supposed to be a two way update
                     // Changes made to one buffer should reflect in the other.  It's not working
@@ -259,7 +258,7 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
                         throw new IOException("Error queueing request.");
                     }
 
-                    var response = Connection.RequestWait();
+                    var response = connection.RequestWait();
                     if (response == null)
                     {
                         throw new IOException("Null response");
@@ -295,7 +294,7 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
             lock (ReadBufferLock)
             {
                 var readAmt = Math.Min(dest.Length, ReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt,
+                numBytesRead = connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt,
                     timeoutMillis);
                 if (numBytesRead < 0)
                 {
@@ -319,6 +318,7 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
         {
             // TODO(mikey): Nearly identical to FtdiSerial write. Refactor.
             var offset = 0;
+            var connection = EnsureConnection();
 
             while (offset < src.Length)
             {
@@ -341,7 +341,7 @@ public class CdcAcmSerialDriver : UsbSerialDriverBase
                         writeBuffer = WriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(_writeEndpoint, writeBuffer, writeLength,
+                    amtWritten = connection.BulkTransfer(_writeEndpoint, writeBuffer, writeLength,
                         timeoutMillis);
                 }
                 if (amtWritten <= 0)

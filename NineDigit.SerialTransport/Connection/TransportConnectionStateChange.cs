@@ -1,4 +1,6 @@
-﻿namespace NineDigit.SerialTransport;
+﻿// ReSharper disable CheckNamespace
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+namespace NineDigit.SerialTransport;
 
 /// <summary>
 /// Represents connection state change.

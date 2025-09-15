@@ -1,32 +1,26 @@
 ﻿#if ANDROID
 using Android.Content;
 using Android.Hardware.Usb;
-using Microsoft.Extensions.Logging;
 using Hoho.Android.UsbSerial.Drivers;
+// ReSharper disable CheckNamespace
+// ReSharper disable ClassWithVirtualMembersNeverInherited.Global
 
 namespace NineDigit.SerialTransport
 {
-    /// <summary>
-    /// https://github.com/mik3y/usb-serial-for-android/blob/master/usbSerialForAndroid/src/main/java/com/hoho/android/usbserial/driver/UsbSerialPort.java
-    /// </summary>
     public class SerialPort : ISerialPort
     {
-        public event EventHandler<EventArgs>? OnError;
-
+        public event EventHandler<SerialPortErrorEventArgs>? OnError;
+        
         private readonly UsbDeviceDetachedReceiver _detachedReceiver;
         private readonly IntentFilter _usbDeviceDetachedIntentFilter;
         private readonly Intent _usbDeviceDetachedIntent;
         
         private readonly UsbSerialPort _serialPort;
         private readonly UsbManager _usbManager;
-        // private readonly IUsbPermissionService _usbPermissionService;
         private readonly int _baudRate;
         private readonly int _dataBits;
         private readonly Hoho.Android.UsbSerial.Parity _parity;
         private readonly Hoho.Android.UsbSerial.StopBits _stopBits;
-        private readonly ILogger _logger;
-        private readonly int _vendorId;
-        private readonly int _productId;
         
         private UsbDeviceConnection? _connection;
         private bool _isOpen;
@@ -34,13 +28,10 @@ namespace NineDigit.SerialTransport
         public SerialPort(
             UsbSerialPort serialPort,
             UsbManager usbManager,
-            // IUsbPermissionService usbPermissionService,
-            SerialPortOptions options,
-            ILogger<SerialPort> logger)
+            SerialPortOptions options)
         {
             ArgumentNullException.ThrowIfNull(serialPort);
             ArgumentNullException.ThrowIfNull(usbManager);
-            // ArgumentNullException.ThrowIfNull(usbPermissionService);
             ArgumentNullException.ThrowIfNull(options);
 
             _detachedReceiver = new UsbDeviceDetachedReceiver(OnUsbDeviceDetached);
@@ -67,27 +58,21 @@ namespace NineDigit.SerialTransport
             
             _serialPort = serialPort;
             _usbManager = usbManager;
-            // _usbPermissionService = usbPermissionService;
             
             _baudRate = options.BaudRate;
             _parity = GetParity(options.Parity);
             _dataBits = options.DataBits;
             _stopBits = GetStopBits(options.StopBits);
-            
-            _vendorId = _serialPort.Driver.Device.VendorId;
-            _productId = _serialPort.Driver.Device.ProductId;
-            
-            _logger = logger;
         }
 
         private void OnUsbDeviceDetached(UsbDevice device)
         {
             if (device.DeviceName == _serialPort.Driver.Device.DeviceName)
             {
-                _logger.LogDebug("USB Serial Port device {DeviceName} was detached", device.DeviceName);
-                
+                SerialTransportEventSource.Log.SerialPortDeviceWasDetached(device.DeviceName);
                 Close();
-                OnError?.Invoke(this, EventArgs.Empty);
+                
+                OnError?.Invoke(this, new SerialPortErrorEventArgs(message: $"Device {device.DeviceName} was detached"));
             }
         }
 
@@ -103,10 +88,6 @@ namespace NineDigit.SerialTransport
             
             var deviceName = _serialPort.Driver.Device.DeviceName;
             
-            // var permissionGranted = await _usbPermissionService
-            //     .EnsureDevicePermissionAsync(_vendorId, _productId, cancellationToken)
-            //     .ConfigureAwait(false);
-            
             var permissionGranted = await _usbManager
                 .RequestPermissionAsync(_serialPort.Driver.Device, Application.Context, cancellationToken)
                 .ConfigureAwait(false);
@@ -114,7 +95,7 @@ namespace NineDigit.SerialTransport
             if (!permissionGranted)
                 throw new UnauthorizedAccessException($"USB permission not granted for device {deviceName}");
             
-            _logger.LogDebug("Opening USB Serial Port device with name {DeviceName}", deviceName);
+            SerialTransportEventSource.Log.OpeningSerialPortDevice(deviceName);
 
             var connection = _usbManager.OpenDevice(_serialPort.Driver.Device);
             if (connection is null)
@@ -122,7 +103,7 @@ namespace NineDigit.SerialTransport
 
             try
             {
-                _logger.LogDebug("Opening USB Serial Port connection for device {DeviceName}", deviceName);
+                SerialTransportEventSource.Log.OpeningSerialPortDeviceConnection(deviceName);
                 _serialPort.Open(connection);
                 
                 _isOpen = true;
@@ -144,24 +125,14 @@ namespace NineDigit.SerialTransport
         {
             ArgumentNullException.ThrowIfNull(data);
 
-            var serialPort = EnsureSerialPort();
-
-            _logger.LogDebug(
-                "Writing {BytesCound} bytes of data to Serial Port with number {SerialPortNumber}",
-                data.Length, serialPort.PortNumber);
-
-            serialPort.Write(data, WriteTimeout);
+            SerialTransportEventSource.Log.WritingData(data.Length, _serialPort.Driver.Device.DeviceName);
+            _serialPort.Write(data, WriteTimeout);
         }
 
         public byte[] Read(int responseLength)
         {
-            var serialPort = EnsureSerialPort();
-
-            _logger.LogDebug(
-               "Reading {BytesCount} bytes from Serial Port with number {SerialPortNumber}",
-               responseLength, serialPort.PortNumber);
-
-            return serialPort.Read(responseLength, ReadTimeout, _logger);
+            SerialTransportEventSource.Log.ReadingData(responseLength, _serialPort.Driver.Device.DeviceName);
+            return _serialPort.Read(responseLength, ReadTimeout);
         }
 
         public void DiscardBuffers()
@@ -169,7 +140,7 @@ namespace NineDigit.SerialTransport
             if (_isOpen)
                 return;
 
-            _logger.LogDebug("Discarding Serial Port buffers");
+            SerialTransportEventSource.Log.DiscardingBuffers(_serialPort.Driver.Device.DeviceName);
 
             //port?.PurgeHwBuffers(
             //    true,   // discard non-transmitted output data
@@ -181,7 +152,7 @@ namespace NineDigit.SerialTransport
             if (!_isOpen)
                 return;
             
-            _logger.LogDebug("Closing Serial Port");
+            SerialTransportEventSource.Log.ClosingSerialPortDeviceConnection(_serialPort.Driver.Device.DeviceName);
 
             _isOpen = false;
             
@@ -189,15 +160,6 @@ namespace NineDigit.SerialTransport
             _connection = null;
             
             _serialPort.Close();
-        }
-
-        private UsbSerialPort EnsureSerialPort()
-        {
-            var port = _serialPort;
-            if (port is null)
-                throw new InvalidOperationException("Port is not open.");
-
-            return port;
         }
 
         #region IDisposable
@@ -216,7 +178,7 @@ namespace NineDigit.SerialTransport
                 _usbDeviceDetachedIntentFilter.Dispose();
                 _detachedReceiver.Dispose();
                 
-                _logger.LogDebug("Disposing Serial Port");
+                SerialTransportEventSource.Log.DisposingSerialPortDevice(_serialPort.Driver.Device.DeviceName);
                 Close();
             }
 
@@ -254,19 +216,12 @@ namespace NineDigit.SerialTransport
             };
         }
         
-        private class UsbDeviceDetachedReceiver : BroadcastReceiver
+        private class UsbDeviceDetachedReceiver(Action<UsbDevice> onDetachedHandler) : BroadcastReceiver
         {
-            private readonly Action<UsbDevice> _onDetachedHandler;
-
-            public UsbDeviceDetachedReceiver(Action<UsbDevice> onDetachedHandler)
-            {
-                _onDetachedHandler = onDetachedHandler;
-            }
-
             public override void OnReceive(Context? context, Intent? intent)
             {
                 if (intent?.GetParcelableExtra(UsbManager.ExtraDevice) is UsbDevice usbDevice)
-                    _onDetachedHandler.Invoke(usbDevice);
+                    onDetachedHandler.Invoke(usbDevice);
             }
         }
     }

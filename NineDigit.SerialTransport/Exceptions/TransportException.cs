@@ -1,5 +1,4 @@
-﻿using System.Runtime.Serialization;
-
+﻿// ReSharper disable CheckNamespace
 namespace NineDigit.SerialTransport;
 
 /// <summary>
@@ -30,11 +29,6 @@ public class TransportException : PortException
 
     public TransportException(string? portName, string? message, Exception? innerException)
         : base(portName, message, innerException)
-    {
-    }
-
-    protected TransportException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
     {
     }
 }

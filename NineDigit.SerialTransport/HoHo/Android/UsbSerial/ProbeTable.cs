@@ -86,7 +86,7 @@ public class ProbeTable
         probeTable.AddDriver<FtdiSerialDriver>(FtdiSerialDriver.GetSupportedDevices());
         probeTable.AddDriver<ProlificSerialDriver>(ProlificSerialDriver.GetSupportedDevices());
         probeTable.AddDriver<Ch34xSerialDriver>(Ch34xSerialDriver.GetSupportedDevices());
-        probeTable.AddDriver<STM32SerialDriver>(STM32SerialDriver.GetSupportedDevices());
+        probeTable.AddDriver<Stm32SerialDriver>(Stm32SerialDriver.GetSupportedDevices());
         
         return probeTable;
     }

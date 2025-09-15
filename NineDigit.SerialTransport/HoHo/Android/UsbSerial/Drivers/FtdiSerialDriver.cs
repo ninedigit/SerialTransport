@@ -1,26 +1,16 @@
 #if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using System.Collections.Immutable;
 using Android.Hardware.Usb;
 using Android.Util;
 using Java.Lang;
 using IOException = System.IO.IOException;
 using Math = System.Math;
-
-/*
- * driver is implemented from various information scattered over FTDI documentation
- *
- * baud rate calculation https://www.ftdichip.com/Support/Documents/AppNotes/AN232B-05_BaudRates.pdf
- * control bits https://www.ftdichip.com/Firmware/Precompiled/UM_VinculumFirmware_V205.pdf
- * device type https://www.ftdichip.com/Support/Documents/AppNotes/AN_233_Java_D2XX_for_Android_API_User_Manual.pdf -> bvdDevice
- *
- */
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedType.Local
+// ReSharper disable UnusedMember.Local
+// ReSharper disable ConvertToPrimaryConstructor
+// ReSharper disable MemberCanBePrivate.Local
+// ReSharper disable UnusedMethodReturnValue.Local
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
@@ -86,11 +76,6 @@ public class FtdiSerialDriver : UsbSerialDriverBase
         private bool _rts;
         private int _breakConfig;
 
-        public FtdiSerialPort(UsbDevice device, int portNumber)
-            : base(device, portNumber)
-        {
-        }
-
         public FtdiSerialPort(UsbDevice device, int portNumber, FtdiSerialDriver driver)
             : base(device, portNumber)
         {
@@ -101,7 +86,8 @@ public class FtdiSerialDriver : UsbSerialDriverBase
 
         public void Reset()
         {
-            var result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ResetRequest,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ResetRequest,
                 ResetAll, PortNumber + 1, null, 0, UsbWriteTimeoutMilliseconds);
                 
             if (result != 0)
@@ -162,9 +148,10 @@ public class FtdiSerialDriver : UsbSerialDriverBase
             lock(ReadBufferLock)
             {
                 var readAmt = Math.Min(dest.Length, ReadBuffer.Length);
+                var connection = EnsureConnection();
 
                 // todo: replace with async call
-                var totalBytesRead = Connection.BulkTransfer(endpoint, ReadBuffer, readAmt, timeoutMilliseconds);
+                var totalBytesRead = connection.BulkTransfer(endpoint, ReadBuffer, readAmt, timeoutMilliseconds);
 
                 if (totalBytesRead < ReadHeaderLength)
                     throw new IOException("Expected at least " + ReadHeaderLength + " bytes");
@@ -191,6 +178,7 @@ public class FtdiSerialDriver : UsbSerialDriverBase
 
         public override int Write(byte[] src, int timeoutMilliseconds)
         {
+            var connection = EnsureConnection();
             var endpoint = Device.GetInterface(0).GetEndpoint(1);
             var offset = 0;
 
@@ -215,13 +203,13 @@ public class FtdiSerialDriver : UsbSerialDriverBase
                         writeBuffer = WriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(endpoint, writeBuffer, writeLength, timeoutMilliseconds);
+                    amtWritten = connection.BulkTransfer(endpoint, writeBuffer, writeLength, timeoutMilliseconds);
                 }
 
                 if (amtWritten <= 0)
                 {
-                    throw new IOException("Error writing " + writeLength
-                                                           + " bytes at offset " + offset + " length=" + src.Length);
+                    throw new IOException("Error writing " + writeLength + " bytes at offset " + offset + " length=" +
+                                          src.Length);
                 }
 
                 Log.Debug(Tag, "Wrote amtWritten=" + amtWritten + " attempted=" + writeLength);
@@ -233,7 +221,7 @@ public class FtdiSerialDriver : UsbSerialDriverBase
 
         private int SetBaudRate(int baudRate)
         {
-            int divisor, subdivisor, effectiveBaudRate;
+            int divisor, subDivisor, effectiveBaudRate;
 
             if (baudRate > 3500000)
             {
@@ -242,24 +230,24 @@ public class FtdiSerialDriver : UsbSerialDriverBase
             else if (baudRate >= 2500000)
             {
                 divisor = 0;
-                subdivisor = 0;
+                subDivisor = 0;
                 effectiveBaudRate = 3000000;
             }
             else if (baudRate >= 1750000)
             {
                 divisor = 1;
-                subdivisor = 0;
+                subDivisor = 0;
                 effectiveBaudRate = 2000000;
             }
             else
             {
                 divisor = (24000000 << 1) / baudRate;
                 divisor = (divisor + 1) >> 1; // round
-                subdivisor = divisor & 0x07;
+                subDivisor = divisor & 0x07;
                 divisor >>= 3;
                 if (divisor > 0x3fff) // exceeds bit 13 at 183 baud
                     throw new UnsupportedOperationException("Baud rate to low");
-                effectiveBaudRate = (24000000 << 1) / ((divisor << 3) + subdivisor);
+                effectiveBaudRate = (24000000 << 1) / ((divisor << 3) + subDivisor);
                 effectiveBaudRate = (effectiveBaudRate + 1) >> 1;
             }
             double baudRateError = Math.Abs(1.0 - (effectiveBaudRate / (double)baudRate));
@@ -267,7 +255,7 @@ public class FtdiSerialDriver : UsbSerialDriverBase
                 throw new UnsupportedOperationException(string.Format("Baud rate deviation %.1f%% is higher than allowed 3%%", baudRateError * 100));
             int value = divisor;
             int index = 0;
-            switch (subdivisor)
+            switch (subDivisor)
             {
                 case 0: break; // 16,15,14 = 000 - sub-integer divisor = 0
                 case 4: value |= 0x4000; break; // 16,15,14 = 001 - sub-integer divisor = 0.5
@@ -283,13 +271,13 @@ public class FtdiSerialDriver : UsbSerialDriverBase
                 index <<= 8;
                 index |= PortNumber + 1;
             }
-            int result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, SetBaudRateRequest,
+            
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, SetBaudRateRequest,
                 value, index, null, 0, UsbWriteTimeoutMilliseconds);
 
             if (result != 0)
-            {
                 throw new IOException("Setting baudrate failed: result=" + result);
-            }
 
             return effectiveBaudRate;
         }
@@ -352,84 +340,78 @@ public class FtdiSerialDriver : UsbSerialDriverBase
                     throw new IllegalArgumentException("Unknown stopBits value: " + stopBits);
             }
 
-            var result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, SetDataRequest, config,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, SetDataRequest, config,
                 PortNumber + 1, null, 0, UsbWriteTimeoutMilliseconds);
 
             if (result != 0)
-            {
                 throw new IOException("Setting parameters failed: result=" + result);
-            }
+            
             _breakConfig = config;
         }
 
         private int GetStatus()
         {
             var data = new byte[2];
-            var result = Connection.ControlTransfer((UsbAddressing)ReqTypeDeviceToHost, GetModemStatusRequest,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeDeviceToHost, GetModemStatusRequest,
                 0, PortNumber + 1, data, data.Length, UsbWriteTimeoutMilliseconds);
-            if (result != 2) {
+            
+            if (result != 2)
                 throw new IOException("Get modem status failed: result=" + result);
-            }
+            
             return data[0];
         }
 
         public override bool GetCd()
-        {
-            return (GetStatus() & ModemStatusCd) != 0;
-        }
+            => (GetStatus() & ModemStatusCd) != 0;
 
         public override bool GetCts()
-        {
-            return (GetStatus() & ModemStatusCts) != 0;
-        }
+            => (GetStatus() & ModemStatusCts) != 0;
 
         public override bool GetDsr()
-        {
-            return (GetStatus() & ModemStatusDsr) != 0;
-        }
+            => (GetStatus() & ModemStatusDsr) != 0;
 
         public override bool GetDtr()
-        {
-            return _dtr;
-        }
+            => _dtr;
 
         public override void SetDtr(bool value)
         {
-            var result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ModemControlRequest,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ModemControlRequest,
                 value ? ModemControlDtrEnable : ModemControlDtrDisable, PortNumber + 1, null, 0, UsbWriteTimeoutMilliseconds);
+            
             if (result != 0)
-            {
                 throw new IOException("Set DTR failed: result=" + result);
-            }
+            
             _dtr = value;
         }
 
         public override bool GetRi()
-        {
-            return (GetStatus() & ModemStatusRi) != 0;
-        }
+            => (GetStatus() & ModemStatusRi) != 0;
 
         public override bool GetRts()
-        {
-            return _rts;
-        }
+            => _rts;
 
         public override void SetRts(bool value)
         {
-            var result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ModemControlRequest,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ModemControlRequest,
                 value ? ModemControlRtsEnable : ModemControlRtsDisable, PortNumber + 1, null, 0, UsbWriteTimeoutMilliseconds);
+            
             if (result != 0)
-            {
                 throw new IOException("Set RTS failed: result=" + result);
-            }
+            
             _rts = value;
         }
 
         public override bool PurgeHwBuffers(bool purgeReadBuffers, bool purgeWriteBuffers)
         {
+            var connection = EnsureConnection();
+            
             if (purgeWriteBuffers)
             {
-                var result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ResetRequest,
+                var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ResetRequest,
                     ResetPurgeRx, PortNumber + 1, null, 0, UsbWriteTimeoutMilliseconds);
                 if (result != 0)
                 {
@@ -438,7 +420,7 @@ public class FtdiSerialDriver : UsbSerialDriverBase
             }
             if (purgeReadBuffers)
             {
-                var result = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ResetRequest,
+                var result = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, ResetRequest,
                     ResetPurgeTx, PortNumber + 1, null, 0, UsbWriteTimeoutMilliseconds);
                 if (result != 0)
                 {

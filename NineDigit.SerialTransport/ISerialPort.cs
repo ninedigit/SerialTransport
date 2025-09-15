@@ -2,7 +2,7 @@
 {
     public interface ISerialPort : IDisposable
     {
-        event EventHandler<EventArgs> OnError;
+        event EventHandler<SerialPortErrorEventArgs> OnError;
         
         string Name { get; }
         

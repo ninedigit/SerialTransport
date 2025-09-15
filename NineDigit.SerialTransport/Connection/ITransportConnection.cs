@@ -1,4 +1,7 @@
-﻿namespace NineDigit.SerialTransport;
+﻿// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMemberInSuper.Global
+// ReSharper disable EventNeverSubscribedTo.Global
+namespace NineDigit.SerialTransport;
 
 /// <summary>
 /// Stav transportnej vrstvy.
@@ -20,9 +23,7 @@ public interface ITransportConnection
     /// <summary>
     /// Raised when transport error occurs.
     /// </summary>
-#pragma warning disable CA1716 // Identifiers should not match keywords
     event EventHandler<ErrorEventArgs> Error;
-#pragma warning restore CA1716 // Identifiers should not match keywords
 
     /// <summary>
     /// Raised when trasnport connection state is changed.

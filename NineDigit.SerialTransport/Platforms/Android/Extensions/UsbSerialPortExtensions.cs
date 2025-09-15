@@ -1,14 +1,13 @@
 ﻿#if ANDROID
-using Microsoft.Extensions.Logging;
-using System;
 using System.Diagnostics;
 using Hoho.Android.UsbSerial.Drivers;
+// ReSharper disable CheckNamespace
 
 namespace NineDigit.SerialTransport
 {
     internal static class UsbSerialPortExtensions
     {
-        public static byte[] Read(this UsbSerialPort self, long length, int timeoutMilliseconds, ILogger logger)
+        public static byte[] Read(this UsbSerialPort self, long length, int timeoutMilliseconds)
         {
             if (length == 0)
                 throw new ArgumentOutOfRangeException(nameof(length), "Positive non-zero length expected.");
@@ -24,7 +23,7 @@ namespace NineDigit.SerialTransport
             {
                 var readTimeoutMilliseconds = (int)Math.Min(int.MaxValue, Math.Max(0, timeoutMilliseconds - stopWatch.ElapsedMilliseconds));
                 if (readTimeoutMilliseconds == 0)
-                    logger.LogWarning("No time to read remaining data from serial port");
+                    SerialTransportEventSource.Log.ReadTimeoutElapsed(timeoutMilliseconds, self.Driver.Device.DeviceName);
 
                 var bytesRead = self.Read(buffer, readTimeoutMilliseconds);
                 if (bytesRead == 0)
@@ -43,9 +42,7 @@ namespace NineDigit.SerialTransport
                     destinationIndex: destinationIndex,
                     length: bytesRead);
 
-                logger.LogDebug(
-                    "Reading from Serial Port. Length: {Length} \t BytesRead: {BytesRead} \t TotalBytesRead: {TotalBytesRead}",
-                    length, bytesRead, totalBytesRead);
+                SerialTransportEventSource.Log.ReadingDataChunk(length, bytesRead, totalBytesRead, self.Driver.Device.DeviceName);
             }
 
             if (totalBytesRead != length)

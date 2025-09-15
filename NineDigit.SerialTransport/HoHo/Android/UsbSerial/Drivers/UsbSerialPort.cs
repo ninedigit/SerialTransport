@@ -7,6 +7,7 @@
  */
 
 using Android.Hardware.Usb;
+// ReSharper disable CheckNamespace
 
 namespace Hoho.Android.UsbSerial.Drivers;
 

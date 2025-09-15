@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-
-namespace NineDigit.SerialTransport;
+﻿namespace NineDigit.SerialTransport;
 
 /// <summary>
 /// Platform-independent implementation of serial transport
@@ -8,22 +6,20 @@ namespace NineDigit.SerialTransport;
 public class TransportConnection : TransportConnectionBase, ITransport
 {
     private readonly ISerialPort _serialPort;
-    private readonly ILogger<TransportConnection> _logger;
 
-    public TransportConnection(ISerialPort serialPort, ILogger<TransportConnection> logger)
+    public TransportConnection(ISerialPort serialPort)
     {
         _serialPort = serialPort
                       ?? throw new ArgumentNullException(nameof(serialPort));
 
-        _logger = logger
-                  ?? throw new ArgumentNullException(nameof(logger));
-
         _serialPort.OnError += SerialPort_OnError;
     }
 
-    private void SerialPort_OnError(object? sender, EventArgs e)
+    private void SerialPort_OnError(object? sender, SerialPortErrorEventArgs e)
     {
-        _logger.LogError("Received Serial Port error event");
+        SerialTransportEventSource.Log
+            .ReceivedSerialPortError(_serialPort.Name, e.ErrorType, e.ErrorCode, e.Message, e.Exception?.ToString());
+        
         _serialPort.Close();
         SetDisconnected();
     }
@@ -120,7 +116,7 @@ public class TransportConnection : TransportConnectionBase, ITransport
 
     public void Disconnect(Exception ex)
     {
-        _logger.LogDebug(ex, "Disconnecting with error");
+        SerialTransportEventSource.Log.SerialPortDeviceConnectionError(_serialPort.Name, ex.ToString());
         _serialPort.Close();
         SetDisconnected(ex);
     }
@@ -138,7 +134,7 @@ public class TransportConnection : TransportConnectionBase, ITransport
         if (disposing)
         {
             _serialPort.OnError -= SerialPort_OnError;
-            _serialPort?.Dispose();
+            _serialPort.Dispose();
         }
 
         _disposed = true;

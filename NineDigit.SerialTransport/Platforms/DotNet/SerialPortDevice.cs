@@ -1,3 +1,6 @@
+#if DESKTOP
+// ReSharper disable CheckNamespace
+// ReSharper disable ConvertToPrimaryConstructor
 namespace NineDigit.SerialTransport;
 
 internal class SerialPortDevice : ISerialPortDevice
@@ -11,10 +14,11 @@ internal class SerialPortDevice : ISerialPortDevice
     
     public int VendorId => _device.VendorId;
     public int ProductId => _device.ProductId;
-    public string? VendorName => _device.VendorName;
-    public string? ProductName => _device.ProductName;
+    public string VendorName => _device.VendorName;
+    public string ProductName => _device.ProductName;
     public string PortName => _device.SerialPortName;
     
     public NineDigit.SerialPort.ISerialPortDevice GetSerialPortDevice()
         =>  _device;
 }
+#endif

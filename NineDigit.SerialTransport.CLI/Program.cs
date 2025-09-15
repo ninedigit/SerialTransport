@@ -2,7 +2,8 @@
 using NineDigit.SerialTransport;
 using System.Threading;
 
-string portName = "/dev/cu.usbmodem205C377548521";
+string? portName = "/dev/cu.usbmodem205C377548521";
+
 SerialPortOptions serialPortOptions = new SerialPortOptions
 {
     Parity = Parity.None,
@@ -17,8 +18,8 @@ ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
 });
 
 ILogger logger = loggerFactory.CreateLogger<Program>();
-
-ITransport serialTransport = TransportFactory.CreateSerialTransport(portName, serialPortOptions, loggerFactory);
+ISerialPortDeviceSelector deviceSelector = new SerialPortDevicePortNameSelector(portName);
+ITransport serialTransport = TransportFactory.CreateSerialTransport(deviceSelector, serialPortOptions);
 
 // Read CHDU Lite status
 byte[] dataToSend = new byte[] { 0x02, 0x01, 0x00, 0x5A, 0x04 };

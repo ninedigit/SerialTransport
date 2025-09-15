@@ -1,5 +1,6 @@
-using System.Runtime.Serialization;
-
+// ReSharper disable CheckNamespace
+// ReSharper disable IntroduceOptionalParameters.Global
+// ReSharper disable ConvertToPrimaryConstructor
 namespace NineDigit.SerialTransport;
 
 /// <summary>
@@ -33,11 +34,6 @@ public class ReadTransportException : TransportException
     {
     }
 
-    protected ReadTransportException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
-    {
-    }
-        
     private static string GetDefaultMessage(string? portName = null)
         => !string.IsNullOrWhiteSpace(portName)
             ? $"Read operation from port '{portName}' failed."

@@ -1,13 +1,9 @@
 #if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using Android.Hardware.Usb;
 using Android.Util;
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMethodReturnValue.Local
+// ReSharper disable RedundantSwitchExpressionArms
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
@@ -87,7 +83,7 @@ public class Cp21xxSerialDriver : UsbSerialDriverBase
 
         private int SetConfigSingle(int request, int value)
         {
-            return Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, request, value,
+            return EnsureConnection().ControlTransfer((UsbAddressing)ReqTypeHostToDevice, request, value,
                 0, null, 0, UsbWriteTimeoutMilliseconds);
         }
 
@@ -176,7 +172,9 @@ public class Cp21xxSerialDriver : UsbSerialDriverBase
             lock(ReadBufferLock)
             {
                 var readAmt = Math.Min(dest.Length, ReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt, timeoutMillis);
+                var connection = EnsureConnection();
+                
+                numBytesRead = connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt, timeoutMillis);
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -193,17 +191,18 @@ public class Cp21xxSerialDriver : UsbSerialDriverBase
         public override int Write(byte[] src, int timeoutMilliseconds)
         {
             var offset = 0;
+            var connection = EnsureConnection();
 
             while (offset < src.Length)
             {
                 int writeLength;
                 int amtWritten;
-                lock(WriteBufferLock) {
-
+                lock(WriteBufferLock)
+                {
                     writeLength = src.Length - offset;
-                    amtWritten = Connection.BulkTransfer(_writeEndpoint, src, offset, writeLength,
-                        timeoutMilliseconds);
+                    amtWritten = connection.BulkTransfer(_writeEndpoint, src, offset, writeLength, timeoutMilliseconds);
                 }
+                
                 if (amtWritten <= 0)
                 {
                     throw new IOException(
@@ -224,8 +223,9 @@ public class Cp21xxSerialDriver : UsbSerialDriverBase
                 (byte) ((baudRate >> 16) & 0xff),
                 (byte) ((baudRate >> 24) & 0xff)
             };
-                
-            var ret = Connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, SiLabSerSetBaudRate, 0, 0,
+            
+            var connection = EnsureConnection();
+            var ret = connection.ControlTransfer((UsbAddressing)ReqTypeHostToDevice, SiLabSerSetBaudRate, 0, 0,
                 data, 4, UsbWriteTimeoutMilliseconds);
                 
             if (ret < 0)
@@ -273,7 +273,8 @@ public class Cp21xxSerialDriver : UsbSerialDriverBase
         private int GetStatus()
         {
             var data = new byte[1];
-            var result = Connection.ControlTransfer((UsbAddressing)ReqTypeDeviceToHost, GetModemStatusRequest,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)ReqTypeDeviceToHost, GetModemStatusRequest,
                 0, 0, data, data.Length, UsbWriteTimeoutMilliseconds);
                 
             if (result != 1)

@@ -1,6 +1,7 @@
 #if ANDROID
 using System.Collections.Immutable;
 using Android.Hardware.Usb;
+// ReSharper disable CheckNamespace
 
 namespace Hoho.Android.UsbSerial.Drivers;
 

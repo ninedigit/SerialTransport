@@ -1,4 +1,5 @@
-﻿namespace NineDigit.SerialTransport;
+﻿// ReSharper disable CheckNamespace
+namespace NineDigit.SerialTransport;
 
 /// <summary>
 /// Transport connection state

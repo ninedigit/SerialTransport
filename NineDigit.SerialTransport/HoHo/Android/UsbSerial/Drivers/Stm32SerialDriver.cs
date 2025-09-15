@@ -1,28 +1,23 @@
 ﻿#if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using Android.Hardware.Usb;
 using Android.Util;
 
 using Java.Nio;
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMethodReturnValue.Local
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
-public class STM32SerialDriver : UsbSerialDriverBase
+public class Stm32SerialDriver : UsbSerialDriverBase
 {
-	private const string Tag = nameof(STM32SerialDriver);
+	private const string Tag = nameof(Stm32SerialDriver);
 
 	private int _ctrlInterface;
 
-	public STM32SerialDriver(UsbDevice device)
+	public Stm32SerialDriver(UsbDevice device)
 	{
 		Device = device;
-		Port = new STM32SerialPort(device, 0, this);
+		Port = new Stm32SerialPort(device, 0, this);
 	}
 
 	public override UsbDevice Device { get; }
@@ -41,9 +36,9 @@ public class STM32SerialDriver : UsbSerialDriverBase
 		});
 	}
 
-	public class STM32SerialPort : CommonUsbSerialPort
+	public class Stm32SerialPort : CommonUsbSerialPort
 	{
-		private readonly STM32SerialDriver _driver;
+		private readonly Stm32SerialDriver _driver;
 		private readonly bool _enableAsyncReads;
 		private UsbInterface? _controlInterface;
 		private UsbInterface? _dataInterface;
@@ -62,7 +57,7 @@ public class STM32SerialDriver : UsbSerialDriverBase
 		private const int SetLineCoding = 0x20; // USB CDC 1.1 section 6.2
 		private const int SetControlLineState = 0x22;
 
-		public STM32SerialPort(UsbDevice device, int portNumber, STM32SerialDriver driver) : base(device, portNumber)
+		public Stm32SerialPort(UsbDevice device, int portNumber, Stm32SerialDriver driver) : base(device, portNumber)
 		{
 			_driver = driver;
 			_enableAsyncReads = true;
@@ -72,7 +67,7 @@ public class STM32SerialDriver : UsbSerialDriverBase
 			=> _driver;
 
 		private int SendAcmControlMessage(int request, int value, byte[]? buf)
-			=> Connection.ControlTransfer((UsbAddressing)UsbRtAm, request, value, _driver._ctrlInterface, buf,
+			=> EnsureConnection().ControlTransfer((UsbAddressing)UsbRtAm, request, value, _driver._ctrlInterface, buf,
 				buf?.Length ?? 0, UsbWriteTimeoutMilliseconds);
 
 		public override void Open(UsbDeviceConnection connection)
@@ -134,6 +129,8 @@ public class STM32SerialDriver : UsbSerialDriverBase
 
 		public override int Read(byte[] dest, int timeoutMillis)
 		{
+			var connection = EnsureConnection();
+			
 			if(_enableAsyncReads)
 			{
 				var request = new UsbRequest();
@@ -150,8 +147,8 @@ public class STM32SerialDriver : UsbSerialDriverBase
 
 					if (!request.Queue(buf, buf.Limit()))
 						throw new IOException("Error queuing request");
-
-					UsbRequest response = Connection.RequestWait();
+					
+					var response = connection.RequestWait();
 					if (response == null)
 						throw new IOException("Null response");
 
@@ -177,7 +174,7 @@ public class STM32SerialDriver : UsbSerialDriverBase
 			lock(ReadBufferLock)
 			{
 				var readAmt = Math.Min(dest.Length, ReadBuffer.Length);
-				numBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt, timeoutMillis);
+				numBytesRead = connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt, timeoutMillis);
 				if(numBytesRead <= 0)
 				{
 					// This sucks: we get -1 on timeout, not 0 as preferred.
@@ -200,7 +197,8 @@ public class STM32SerialDriver : UsbSerialDriverBase
 		public override int Write(byte[] src, int timeoutMilliseconds)
 		{
 			var offset = 0;
-
+			var connection = EnsureConnection();
+			
 			while(offset < src.Length)
 			{
 				int writeLength;
@@ -223,7 +221,7 @@ public class STM32SerialDriver : UsbSerialDriverBase
 					amtWritten = mConnection.BulkTransfer(mWriteEndpoint, writeBuffer, writeLength, timeoutMillis);
 					*/
 					// Issue#36 The bulkTransfer supports offsets
-					amtWritten = Connection.BulkTransfer(_writeEndpoint, src, offset, writeLength, timeoutMilliseconds);
+					amtWritten = connection.BulkTransfer(_writeEndpoint, src, offset, writeLength, timeoutMilliseconds);
 				}
 				if(amtWritten <= 0)
 					throw new IOException($"Error writing {writeLength} bytes at offset {offset} length={src.Length}");

@@ -1,13 +1,7 @@
 #if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using Android.Hardware.Usb;
 using Android.Util;
+// ReSharper disable CheckNamespace
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
@@ -112,7 +106,7 @@ public class Ch34xSerialDriver : UsbSerialDriverBase
                     {
                         Close();
                     }
-                    catch (IOException e)
+                    catch (IOException)
                     {
                         // Ignore IOExceptions during close()
                     }
@@ -142,11 +136,13 @@ public class Ch34xSerialDriver : UsbSerialDriverBase
         public override int Read(byte[] dest, int timeoutMillis)
         {
             int numBytesRead;
+            
             lock (ReadBufferLock)
             {
                 var readAmt = Math.Min(dest.Length, ReadBuffer.Length);
-                numBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt,
-                    timeoutMillis);
+                var connection = EnsureConnection();
+                numBytesRead = connection.BulkTransfer(_readEndpoint, ReadBuffer, readAmt, timeoutMillis);
+                
                 if (numBytesRead < 0)
                 {
                     // This sucks: we get -1 on timeout, not 0 as preferred.
@@ -163,6 +159,7 @@ public class Ch34xSerialDriver : UsbSerialDriverBase
         public override int Write(byte[] src, int timeoutMillis)
         {
             var offset = 0;
+            var connection = EnsureConnection();
 
             while (offset < src.Length)
             {
@@ -185,8 +182,7 @@ public class Ch34xSerialDriver : UsbSerialDriverBase
                         writeBuffer = WriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(_writeEndpoint, writeBuffer, writeLength,
-                        timeoutMillis);
+                    amtWritten = connection.BulkTransfer(_writeEndpoint, writeBuffer, writeLength, timeoutMillis);
                 }
                 if (amtWritten <= 0)
                 {
@@ -203,7 +199,9 @@ public class Ch34xSerialDriver : UsbSerialDriverBase
         private int ControlOut(int request, int value, int index)
         {
             const int reqTypeHostToDevice = UsbConstants.UsbTypeVendor | UsbSupport.UsbDirOut;
-            return Connection.ControlTransfer((UsbAddressing)reqTypeHostToDevice, request,
+            var connection = EnsureConnection();
+            
+            return connection.ControlTransfer((UsbAddressing)reqTypeHostToDevice, request,
                 value, index, null, 0, UsbTimeoutMilliseconds);
         }
 
@@ -211,7 +209,9 @@ public class Ch34xSerialDriver : UsbSerialDriverBase
         private int ControlIn(int request, int value, int index, byte[] buffer)
         {
             const int reqTypeHostToDevice = UsbConstants.UsbTypeVendor | UsbSupport.UsbDirIn;
-            return Connection.ControlTransfer((UsbAddressing)reqTypeHostToDevice, request,
+            var connection = EnsureConnection();
+            
+            return connection.ControlTransfer((UsbAddressing)reqTypeHostToDevice, request,
                 value, index, buffer, buffer.Length, UsbTimeoutMilliseconds);
         }
 

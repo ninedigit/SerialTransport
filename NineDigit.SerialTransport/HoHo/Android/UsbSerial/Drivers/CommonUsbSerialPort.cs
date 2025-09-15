@@ -1,12 +1,8 @@
 #if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using Android.Hardware.Usb;
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
@@ -38,6 +34,10 @@ public abstract class CommonUsbSerialPort : UsbSerialPort
         ReadBuffer = new byte[DefaultReadBufferSize];
         WriteBuffer = new byte[DefaultWriteBufferSize];
     }
+
+    protected UsbDeviceConnection EnsureConnection()
+        => Connection ?? throw new InvalidOperationException("Connection is not open");
+    
     public override string ToString()
         => $"<{GetType().Name} device_name={Device.DeviceName} device_id={Device.DeviceId} port_number={PortNumber}>";
 
@@ -54,7 +54,7 @@ public abstract class CommonUsbSerialPort : UsbSerialPort
      * Returns the device serial number
      *  @return serial number
      */
-    public override string Serial => Connection?.Serial;
+    public override string Serial => EnsureConnection().Serial;
 
     /**
      * Sets the size of the internal buffer used to exchange data with the USB

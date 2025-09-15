@@ -1,16 +1,12 @@
 #if ANDROID
-/* Copyright 2017 Tyler Technologies Inc.
- *
- * Project home page: https://github.com/anotherlab/xamarin-usb-serial-for-android
- * Portions of this library are based on usb-serial-for-android (https://github.com/mik3y/usb-serial-for-android).
- * Portions of this library are based on Xamarin USB Serial for Android (https://bitbucket.org/lusovu/xamarinusbserial).
- */
-
 using Android.Hardware.Usb;
 using Android.Util;
 using Java.Lang;
 using Exception = Java.Lang.Exception;
 using Thread = System.Threading.Thread;
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Local
+// ReSharper disable MemberCanBePrivate.Local
 
 namespace Hoho.Android.UsbSerial.Drivers;
 
@@ -122,7 +118,7 @@ public class ProlificSerialDriver : UsbSerialDriverBase
 
         private int _status;
         private volatile Thread? _readStatusThread;
-        private object _readStatusThreadLock = new();
+        private readonly object _readStatusThreadLock = new();
         private bool _stopReadStatusThread;
         private IOException? _readStatusException;
 
@@ -137,7 +133,8 @@ public class ProlificSerialDriver : UsbSerialDriverBase
         private byte[] InControlTransfer(int requestType, int request, int value, int index, int length)
         {
             var buffer = new byte[length];
-            var result = Connection.ControlTransfer((UsbAddressing)requestType, request, value,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)requestType, request, value,
                 index, buffer, length, UsbReadTimeoutMilliseconds);
                 
             if (result != length)
@@ -149,7 +146,8 @@ public class ProlificSerialDriver : UsbSerialDriverBase
         private void OutControlTransfer(int requestType, int request, int value, int index, byte[]? data)
         {
             var length = data?.Length ?? 0;
-            var result = Connection.ControlTransfer((UsbAddressing)requestType, request, value,
+            var connection = EnsureConnection();
+            var result = connection.ControlTransfer((UsbAddressing)requestType, request, value,
                 index, data, length, UsbWriteTimeoutMilliseconds);
                 
             if (result != length)
@@ -215,10 +213,12 @@ public class ProlificSerialDriver : UsbSerialDriverBase
         {
             try
             {
+                var connection = EnsureConnection();
+                
                 while (!_stopReadStatusThread)
                 {
                     var buffer = new byte[StatusBufferSize];
-                    var readBytesCount = Connection.BulkTransfer(_interruptEndpoint, buffer, StatusBufferSize, 500);
+                    var readBytesCount = connection.BulkTransfer(_interruptEndpoint, buffer, StatusBufferSize, 500);
                     if (readBytesCount > 0)
                     {
                         if (readBytesCount == StatusBufferSize)
@@ -319,7 +319,7 @@ public class ProlificSerialDriver : UsbSerialDriverBase
                 
             try
             {
-                for (int i = 0; i < usbInterface.EndpointCount; ++i)
+                for (var i = 0; i < usbInterface.EndpointCount; ++i)
                 {
                     var currentEndpoint = usbInterface.GetEndpoint(i);
                     switch (currentEndpoint.Address)
@@ -427,12 +427,13 @@ public class ProlificSerialDriver : UsbSerialDriverBase
             lock (ReadBufferLock)
             {
                 var readAmt = System.Math.Min(dest.Length, ReadBuffer.Length);
-                var numBytesRead = Connection.BulkTransfer(_readEndpoint, ReadBuffer,
+                var connection = EnsureConnection();
+                var numBytesRead = connection.BulkTransfer(_readEndpoint, ReadBuffer,
                     readAmt, timeoutMillis);
+                
                 if (numBytesRead < 0)
-                {
                     return 0;
-                }
+                
                 Buffer.BlockCopy(ReadBuffer, 0, dest, 0, numBytesRead);
                 return numBytesRead;
             }
@@ -441,7 +442,8 @@ public class ProlificSerialDriver : UsbSerialDriverBase
         public override int Write(byte[] src, int timeoutMillis)
         {
             var offset = 0;
-
+            var connection = EnsureConnection();
+            
             while (offset < src.Length)
             {
                 int writeLength;
@@ -463,7 +465,7 @@ public class ProlificSerialDriver : UsbSerialDriverBase
                         writeBuffer = WriteBuffer;
                     }
 
-                    amtWritten = Connection.BulkTransfer(_writeEndpoint,
+                    amtWritten = connection.BulkTransfer(_writeEndpoint,
                         writeBuffer, writeLength, timeoutMillis);
                 }
 

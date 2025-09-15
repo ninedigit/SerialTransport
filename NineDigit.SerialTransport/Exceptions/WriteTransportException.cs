@@ -1,11 +1,13 @@
-using System.Runtime.Serialization;
-
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable IntroduceOptionalParameters.Global
+// ReSharper disable ConvertToPrimaryConstructor
 namespace NineDigit.SerialTransport;
 
 /// <summary>
 /// Represents exception related to writing data to device.
 /// </summary>
-[Serializable]
 public class WriteTransportException : TransportException
 {
     public WriteTransportException()
@@ -30,11 +32,6 @@ public class WriteTransportException : TransportException
         
     public WriteTransportException(string? portName, string? message, Exception? innerException)
         : base(portName, message, innerException)
-    {
-    }
-
-    protected WriteTransportException(SerializationInfo info, StreamingContext context)
-        : base(info, context)
     {
     }
         

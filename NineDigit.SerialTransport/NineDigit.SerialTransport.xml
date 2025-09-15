@@ -98,7 +98,7 @@
             Executes data exchange with another device.
             </summary>
             <param name="data">Data to be written.</param>
-            <param name="responseLength">Expected resposne length (in bytes)</param>
+            <param name="responseLength">Expected response length (in bytes)</param>
             <param name="cancellationToken">Cancellation token.</param>
             <returns>Response received from opposite endpoint.</returns>
             <exception cref="T:System.ArgumentNullException"><paramref name="data"/> is null.</exception>
@@ -117,24 +117,6 @@
             Disconnects from the other endpoint.
             </summary>
             <param name="ex">Error that casuses the disconnection.</param>
-        </member>
-        <member name="M:NineDigit.SerialTransport.ITransportExtensions.ReadAsync(NineDigit.SerialTransport.ITransport,System.Byte[],System.Int32,System.Int32,System.Threading.CancellationToken)">
-            <summary>
-            </summary>
-            <param name="self">Transport</param>
-            <param name="buffer">The buffer to write the data into.</param>
-            <param name="offset">The byte offset in buffer at which to begin writing data from the stream.</param>
-            <param name="count">The maximum number of bytes to read.</param>
-            <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-            <returns>
-            A task that represents the asynchronous read operation. The value of the TResult
-            parameter contains the total number of bytes read into the buffer.
-            </returns>
-        </member>
-        <member name="T:NineDigit.SerialTransport.SerialPort">
-            <summary>
-            https://github.com/mik3y/usb-serial-for-android/blob/master/usbSerialForAndroid/src/main/java/com/hoho/android/usbserial/driver/UsbSerialPort.java
-            </summary>
         </member>
         <member name="T:NineDigit.SerialTransport.TransportConnection">
             <summary>
@@ -184,15 +166,22 @@
             </summary>
             <param name="ex"></param>
         </member>
+        <member name="M:NineDigit.SerialTransport.TransportExtensions.ReadAsync(NineDigit.SerialTransport.ITransport,System.Byte[],System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            </summary>
+            <param name="self">Transport</param>
+            <param name="buffer">The buffer to write the data into.</param>
+            <param name="offset">The byte offset in buffer at which to begin writing data from the stream.</param>
+            <param name="count">The maximum number of bytes to read.</param>
+            <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+            <returns>
+            A task that represents the asynchronous read operation. The value of the TResult
+            parameter contains the total number of bytes read into the buffer.
+            </returns>
+        </member>
         <member name="T:NineDigit.SerialTransport.TransportFactory">
             <summary>
             Helper for instantiating transport instance.
-            </summary>
-        </member>
-        <member name="T:NineDigit.SerialTransport.Resource">
-            <summary>
-            Android Resource Designer class.
-            Exposes the Android Resource designer assembly into the project Namespace.
             </summary>
         </member>
         <member name="F:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.ReadBuffer">

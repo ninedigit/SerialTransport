@@ -1,11 +1,14 @@
-﻿namespace NineDigit.SerialTransport;
+﻿// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
+// ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable ConvertToConstant.Global
+namespace NineDigit.SerialTransport;
 
 public sealed class SerialPortOptions
 {
     public static readonly int DefaultBaudRate = 115200;
     public static readonly int DefaultDataBits = 8;
     public static readonly Parity DefaultParity = Parity.None;
-    public static readonly StopBits DefaultStopBits = SerialTransport.StopBits.One;
+    public static readonly StopBits DefaultStopBits = StopBits.One;
     public static readonly TimeSpan DefaultReadTimeout = TimeSpan.FromMilliseconds(500);
     public static readonly TimeSpan DefaultWriteTimeout = TimeSpan.FromMilliseconds(500);
 
