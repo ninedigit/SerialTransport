@@ -1,6 +1,7 @@
 ﻿#if ANDROID
 using Android.Content;
 using Android.Hardware.Usb;
+using Android.OS;
 using Hoho.Android.UsbSerial.Drivers;
 // ReSharper disable CheckNamespace
 // ReSharper disable ClassWithVirtualMembersNeverInherited.Global
@@ -13,7 +14,7 @@ namespace NineDigit.SerialTransport
         
         private readonly UsbDeviceDetachedReceiver _detachedReceiver;
         private readonly IntentFilter _usbDeviceDetachedIntentFilter;
-        private readonly Intent _usbDeviceDetachedIntent;
+        private readonly Intent? _usbDeviceDetachedIntent;
         
         private readonly UsbSerialPort _serialPort;
         private readonly UsbManager _usbManager;
@@ -36,7 +37,17 @@ namespace NineDigit.SerialTransport
 
             _detachedReceiver = new UsbDeviceDetachedReceiver(OnUsbDeviceDetached);
             _usbDeviceDetachedIntentFilter = new IntentFilter(UsbManager.ActionUsbDeviceDetached);
-            _usbDeviceDetachedIntent = Application.Context.RegisterReceiver(_detachedReceiver, _usbDeviceDetachedIntentFilter);
+
+            if (OperatingSystem.IsAndroidVersionAtLeast(33))
+            {
+                _usbDeviceDetachedIntent = Application.Context
+                    .RegisterReceiver(_detachedReceiver, _usbDeviceDetachedIntentFilter, ReceiverFlags.NotExported);
+            }
+            else
+            {
+                _usbDeviceDetachedIntent = Application.Context
+                    .RegisterReceiver(_detachedReceiver, _usbDeviceDetachedIntentFilter);
+            }
 
             if (options.BaudRate <= 0)
                 throw new ArgumentException("Baud rate must be an positive number.", nameof(options));
@@ -174,7 +185,7 @@ namespace NineDigit.SerialTransport
             {
                 Application.Context.UnregisterReceiver(_detachedReceiver);
                 
-                _usbDeviceDetachedIntent.Dispose();
+                _usbDeviceDetachedIntent?.Dispose();
                 _usbDeviceDetachedIntentFilter.Dispose();
                 _detachedReceiver.Dispose();
                 
