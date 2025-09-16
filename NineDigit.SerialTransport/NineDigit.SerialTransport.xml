@@ -118,7 +118,7 @@
             </summary>
             <param name="ex">Error that casuses the disconnection.</param>
         </member>
-        <member name="T:NineDigit.SerialTransport.TransportConnection">
+        <member name="T:NineDigit.SerialTransport.Transport">
             <summary>
             Platform-independent implementation of serial transport
             </summary>
@@ -178,11 +178,6 @@
             A task that represents the asynchronous read operation. The value of the TResult
             parameter contains the total number of bytes read into the buffer.
             </returns>
-        </member>
-        <member name="T:NineDigit.SerialTransport.TransportFactory">
-            <summary>
-            Helper for instantiating transport instance.
-            </summary>
         </member>
         <member name="F:Hoho.Android.UsbSerial.Drivers.CommonUsbSerialPort.ReadBuffer">
             Internal read buffer.  Guarded by {@link #mReadBufferLock}. 

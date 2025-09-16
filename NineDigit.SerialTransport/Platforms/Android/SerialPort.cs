@@ -10,7 +10,7 @@ namespace NineDigit.SerialTransport
 {
     public class SerialPort : ISerialPort
     {
-        public event EventHandler<SerialPortErrorEventArgs>? OnError;
+        public event EventHandler<SerialPortErrorEventArgs>? Error;
         
         private readonly UsbDeviceDetachedReceiver _detachedReceiver;
         private readonly IntentFilter _usbDeviceDetachedIntentFilter;
@@ -83,7 +83,7 @@ namespace NineDigit.SerialTransport
                 SerialTransportEventSource.Log.SerialPortDeviceWasDetached(device.DeviceName);
                 Close();
                 
-                OnError?.Invoke(this, new SerialPortErrorEventArgs(message: $"Device {device.DeviceName} was detached"));
+                Error?.Invoke(this, new SerialPortErrorEventArgs(message: $"Device {device.DeviceName} was detached"));
             }
         }
 

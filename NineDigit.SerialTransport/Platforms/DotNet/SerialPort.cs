@@ -6,7 +6,7 @@ namespace NineDigit.SerialTransport
 {
     internal class SerialPort : ISerialPort
     {
-        public event EventHandler<SerialPortErrorEventArgs>? OnError;
+        public event EventHandler<SerialPortErrorEventArgs>? Error;
 
         private readonly System.IO.Ports.SerialPort _serialPort;
 
@@ -66,10 +66,10 @@ namespace NineDigit.SerialTransport
         private void OnSerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
             var code = ((int)e.EventType).ToString();
-            var errorType = typeof(System.IO.Ports.SerialError).FullName;
+            var errorType = typeof(SerialError).FullName;
             var args = new SerialPortErrorEventArgs(code, errorType, message: null, exception: null);
             
-            OnError?.Invoke(this, args);
+            Error?.Invoke(this, args);
         }
 
         public Task OpenAsync(CancellationToken cancellationToken)

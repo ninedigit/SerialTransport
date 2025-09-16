@@ -1,18 +1,24 @@
-﻿namespace NineDigit.SerialTransport;
+﻿#if ANDROID
+using System.Collections.Immutable;
+using Android.Hardware.Usb;
+using Hoho.Android.UsbSerial;
+#endif
+
+namespace NineDigit.SerialTransport;
 
 /// <summary>
 /// Platform-independent implementation of serial transport
 /// </summary>
-public class TransportConnection : TransportConnectionBase, ITransport
+public class Transport : TransportConnectionBase, ITransport
 {
     private readonly ISerialPort _serialPort;
 
-    public TransportConnection(ISerialPort serialPort)
+    public Transport(ISerialPort serialPort)
     {
         _serialPort = serialPort
                       ?? throw new ArgumentNullException(nameof(serialPort));
 
-        _serialPort.OnError += SerialPort_OnError;
+        _serialPort.Error += SerialPort_OnError;
     }
 
     private void SerialPort_OnError(object? sender, SerialPortErrorEventArgs e)
@@ -133,11 +139,77 @@ public class TransportConnection : TransportConnectionBase, ITransport
             
         if (disposing)
         {
-            _serialPort.OnError -= SerialPort_OnError;
+            _serialPort.Error -= SerialPort_OnError;
             _serialPort.Dispose();
         }
 
         _disposed = true;
     }
     #endregion
+    
+#if DESKTOP
+    public static ITransport Create(ISerialPortDeviceSelector serialPortDeviceSelector,
+        SerialPortOptions options)
+    {
+        if (serialPortDeviceSelector is null)
+            throw new ArgumentNullException(nameof(serialPortDeviceSelector));
+
+        if (options is null)
+            throw new ArgumentNullException(nameof(options));
+
+        var serialPortManager = new NineDigit.SerialPort.SerialPortManager();
+
+        IReadOnlyCollection<NineDigit.SerialPort.ISerialPortDevice> devices;
+
+        try
+        {
+            devices = serialPortManager.GetSerialPortDevices();
+        }
+        catch (Exception ex) when (ex is NotSupportedException or PlatformNotSupportedException)
+        {
+            // logger.LogWarning("Unable to get serial port devices on given platform");
+            devices = [];
+        }
+
+        var serialPortDevices = devices.Select(device => new SerialPortDevice(device)).ToList();
+        var selectedSerialPortDevice = serialPortDeviceSelector.SelectDevice(serialPortDevices);
+            
+        if (selectedSerialPortDevice is null)
+            throw new InvalidOperationException("No serial port selected");
+
+        var serialPort = new SerialPort(selectedSerialPortDevice.PortName, options);
+        var transport = new Transport(serialPort);
+
+        return transport;
+    }
+#elif ANDROID
+    public static ITransport Create(
+        UsbManager usbManager,
+        ProbeTable probeTable,
+        ISerialPortDeviceSelector serialPortDeviceSelector,
+        SerialPortOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(usbManager);
+        ArgumentNullException.ThrowIfNull(serialPortDeviceSelector);
+        ArgumentNullException.ThrowIfNull(options);
+        
+        var usbSerialProber = new UsbSerialProber(probeTable);
+        var ports = usbSerialProber.FindAllDrivers(usbManager).SelectMany(i => i.Ports).ToImmutableList();
+
+        if (ports.Count == 0)
+            throw new InvalidOperationException("No compatible USB device was found.");
+
+        var serialPortDevices = ports.Select(device => new SerialPortDevice(device)).ToList();
+        var selectedSerialPortDevice = serialPortDeviceSelector.SelectDevice(serialPortDevices) as SerialPortDevice;
+        
+        if (selectedSerialPortDevice is null)
+            throw new InvalidOperationException("No matching USB device was found.");
+
+        var selectedSerialPort = selectedSerialPortDevice.GetUsbSerialPort();
+        var serialPort = new SerialPort(selectedSerialPort, usbManager, options);
+        var transport = new Transport(serialPort);
+
+        return transport;
+    }
+#endif
 }

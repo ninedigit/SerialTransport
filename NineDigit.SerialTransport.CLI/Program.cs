@@ -19,7 +19,7 @@ ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
 
 ILogger logger = loggerFactory.CreateLogger<Program>();
 ISerialPortDeviceSelector deviceSelector = new SerialPortDevicePortNameSelector(portName);
-ITransport serialTransport = TransportFactory.CreateSerialTransport(deviceSelector, serialPortOptions);
+ITransport serialTransport = Transport.Create(deviceSelector, serialPortOptions);
 
 // Read CHDU Lite status
 byte[] dataToSend = new byte[] { 0x02, 0x01, 0x00, 0x5A, 0x04 };
